@@ -1,0 +1,238 @@
+
+
+
+.fs-32px{
+    font-size: 32px;
+}
+
+.fs-16px{
+    font-size: 16px;
+}
+
+
+.row-gap-32px{
+    row-gap: 32px;
+}
+
+
+.w-100px{
+    width: 100px;
+}
+
+
+.form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.input-group-custom .form-control {
+    padding: 14px 14px 14px 48px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #374151;
+    background: #fafafa;
+}
+
+
+.form-check-input:checked {
+    background-color: #7C3AED !important;
+    border-color: #7C3AED !important;
+}
+.input-group-custom .form-control:focus {
+    border-color: #7C3AED;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    background: white;
+}
+.forgot-link{
+    color: #7C3AED;
+    font-size: 14px;
+    text-decoration: none;
+    font-weight: 500;
+}
+.forgot-link:hover{
+    opacity: 0.8;
+}
+
+
+.left-panel {
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #5B21B6 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+    padding: 40px 60px !important;
+    display: flex;
+    flex-direction: column;
+}
+.right-panel {
+    background: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 40px 80px !important;
+    position: relative;
+}
+.left-panel::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+.logo-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 25px;
+    position: relative;
+    z-index: 2;
+}
+
+.hero-title {
+    color: white;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 2;
+}
+
+.hero-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 320px;
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 2;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 2;
+}
+.feature-icon.purple {
+    background: rgba(124, 58, 237, 0.3);
+    color: #A78BFA;
+}
+
+.feature-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.feature-icon.teal {
+    background: rgba(45, 212, 191, 0.3);
+    color: #5EEAD4;
+}
+.feature-icon.blue {
+    background: rgba(96, 165, 250, 0.3);
+    color: #93C5FD;
+}
+
+.feature-icon.indigo {
+    background: rgba(99, 102, 241, 0.3);
+    color: #A5B4FC;
+}
+
+.hero-title .highlight {
+    color: #6366f1;
+}
+
+.feature-text h5 {
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.btn-login {
+    background: #6366f1 !important;
+    border: none;
+    color: white !important;
+    padding: 14px !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+.btn-login:hover , .btn-social:hover {
+    opacity: 0.7;
+}
+.feature-text p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    margin: 0;
+}
+
+.btn-social {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #6366f1;
+    background: #6366f133;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+}
+
+.signup-text {
+    text-align: center;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.signup-text a {
+    color: #6366f1;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+@media (max-width: 991px) {
+    .left-panel{
+        display: none
+    }
+
+    .right-panel{
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #5B21B6 100%);
+    }
+    .right-panel::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+.after-lg-card{
+    padding: 30px 24px;
+    border-radius: 10px;
+    background: #ececff;
+}
+}
