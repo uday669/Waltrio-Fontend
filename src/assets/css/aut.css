@@ -1,10 +1,21 @@
 
+.ru-text-5b5b5b{
+    color: #5b5b5b;
+}
 
+.ru-border-34302d8a{
+    border-color: #34302d8a;
+}
 
 .fs-32px{
     font-size: 32px;
 }
-
+.fs-12px{
+    font-size: 12px;
+}
+.fs-14px{
+    font-size: 14px;
+}
 .fs-16px{
     font-size: 16px;
 }
@@ -18,6 +29,9 @@
 .w-100px{
     width: 100px;
 }
+.max-w-480px{
+    max-width: 480px;
+}
 
 
 .form-label {
@@ -29,14 +43,20 @@
 
 .input-group-custom .form-control {
     padding: 14px 14px 14px 48px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #6366f1;
     border-radius: 10px;
     font-size: 14px;
     color: #374151;
     background: #fafafa;
 }
-
-
+.input-group-custom .form-control::placeholder{
+    color: #6366f1;
+}
+.input-group-custom .form-control:focus {
+   border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgb(99 102 241 / 40%);
+    background: #6366f108;
+}
 .form-check-input:checked {
     background-color: #7C3AED !important;
     border-color: #7C3AED !important;
@@ -47,7 +67,7 @@
     background: white;
 }
 .forgot-link{
-    color: #7C3AED;
+    color: #6366f1;
     font-size: 14px;
     text-decoration: none;
     font-weight: 500;
@@ -65,6 +85,18 @@
     padding: 40px 60px !important;
     display: flex;
     flex-direction: column;
+}
+.left-panel::after{
+    content: '';
+    background-image: url(../image/login-bak.png);
+        background-position: left;
+    right: 0;
+    background-size: cover;
+   width: 716px;
+    height: 539px;
+    background-position: left;
+    position: absolute;
+    bottom: 0;
 }
 .right-panel {
     background: white;
@@ -187,7 +219,7 @@
     width: 100%;
     padding: 12px;
     border: 1px solid #6366f1;
-    background: #6366f133;
+    background: #ffffff;
     border-radius: 10px;
     font-size: 14px;
     font-weight: 500;
@@ -210,6 +242,19 @@
     font-weight: 600;
     text-decoration: none;
 }
+
+.otp-input input{
+        height: 60px;
+    width: 52px;
+    font-size: 24px;
+    font-weight: 600;
+    border-color: #6366f1;
+}
+.otp-input .form-control:focus{
+    background: #482d8e0a;
+        box-shadow: 0 0 0 .25rem rgb(99 102 241 / 14%);
+}
+
 
 @media (max-width: 991px) {
     .left-panel{
@@ -235,4 +280,18 @@
     border-radius: 10px;
     background: #ececff;
 }
+}
+
+
+@media (max-width:  576px) {
+    .right-panel{
+        padding: 30px 24px !important;
+    }
+    .otp-input input{
+        height: 48px;
+    width: 37px;
+    }
+    .btn-login{
+        padding: 10px !important;
+    }
 }
