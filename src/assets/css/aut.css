@@ -294,4 +294,8 @@
     .btn-login{
         padding: 10px !important;
     }
+
+    .after-lg-card{
+    padding: 24px 12px;
+}
 }
