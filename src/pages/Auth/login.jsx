@@ -47,7 +47,7 @@ export default function Login() {
         <div className="mb-4 text-center text-sm-start">
           <h2 className="auth-title">Welcome Back! 👋</h2>
           <p className="auth-subtitle">
-            Sign in to continue to your Waltro account
+            Sign in to continue to your Waltrio account
           </p>
         </div>
 

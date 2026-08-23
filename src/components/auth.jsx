@@ -28,7 +28,7 @@ export default function Auth({ children, AutData }) {
             <div>
               <div className="brand-header">
                 <div className="logo-brand mb-0">
-                  <img src={whiteLogo} alt="Waltro" className="w-140px" />
+                  <img src={whiteLogo} alt="Waltrio" className="w-140px" />
                 </div>
 
                 <div className="brand-badge">
@@ -45,7 +45,7 @@ export default function Auth({ children, AutData }) {
               </h1>
 
               <p className="change-fs-16px-14px ur-text-FAF9F6 opacity-75 mb-32px max-w-480px line-height-20px">
-                Automate your expense tracking, master group settlements, and achieve your financial goals with Waltro.
+                Automate your expense tracking, master group settlements, and achieve your financial goals with Waltrio.
               </p>
 
               {/* Glassmorphism Live Financial Preview Widget */}
@@ -177,7 +177,7 @@ export default function Auth({ children, AutData }) {
                 <span>4.9/5 from 50,000+ happy users</span>
               </div>
               <div>
-                <span className="fs-12px ur-text-FAF9F6 opacity-50">© {new Date().getFullYear()} Waltro • Privacy • Terms</span>
+                <span className="fs-12px ur-text-FAF9F6 opacity-50">© {new Date().getFullYear()} Waltrio • Privacy • Terms</span>
               </div>
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function Auth({ children, AutData }) {
         <Col xs={12} lg={6} xl={5} className="right-panel">
           {/* Mobile-only Top Brand Header */}
           <div className="mobile-brand-header d-lg-none">
-            <img src={whiteLogo} alt="Waltro" />
+            <img src={whiteLogo} alt="Waltrio" />
             <p className="mobile-brand-subtitle">Smart Financial Management</p>
           </div>
 

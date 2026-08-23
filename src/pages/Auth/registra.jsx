@@ -66,7 +66,7 @@ export default function Register() {
         <div className="mb-3 text-center text-sm-start">
           <h2 className="auth-title">Create Your Account 🚀</h2>
           <p className="auth-subtitle">
-            Join Waltro to take full control of your finances
+            Join Waltrio to take full control of your finances
           </p>
         </div>
 
@@ -199,7 +199,7 @@ export default function Register() {
                   required
                 />
                 <label className="form-check-label fs-13px ur-text-5E5E5E cursor-pointer" htmlFor="agreeTerms">
-                  I agree to Waltro's <a href="#" className="link-theme">Terms of Service</a> &amp; <a href="#" className="link-theme">Privacy Policy</a>
+                  I agree to Waltrio's <a href="#" className="link-theme">Terms of Service</a> &amp; <a href="#" className="link-theme">Privacy Policy</a>
                 </label>
               </div>
             </Col>
