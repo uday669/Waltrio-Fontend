@@ -27,6 +27,8 @@ import {
   FiSend,
 } from "react-icons/fi";
 import { IoWalletOutline } from "react-icons/io5";
+import Select from "react-select";
+import { formSelectStyles } from "../../utils/selectStyles";
 import CommonDataTable from "../../components/common/DataTable";
 
 // Initial Mock Dataset for Groups
@@ -763,17 +765,25 @@ export default function GroupsSplit() {
               <Col xs={12} md={5}>
                 <Form.Group>
                   <Form.Label className="ur-form-label">Category</Form.Label>
-                  <Form.Select
-                    value={groupCategory}
-                    onChange={(e) => setGroupCategory(e.target.value)}
-                    className="ur-form-input"
-                  >
-                    <option value="Trip & Travel">Trip &amp; Travel</option>
-                    <option value="Roommates">Roommates / Flat</option>
-                    <option value="Project / Event">Project / Event</option>
-                    <option value="Dining & Outing">Dining &amp; Outing</option>
-                    <option value="Office & Work">Office &amp; Work</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "Trip & Travel", label: "Trip & Travel" },
+                      { value: "Roommates", label: "Roommates / Flat" },
+                      { value: "Project / Event", label: "Project / Event" },
+                      { value: "Dining & Outing", label: "Dining & Outing" },
+                      { value: "Office & Work", label: "Office & Work" },
+                    ].find((c) => c.value === groupCategory)}
+                    onChange={(opt) => setGroupCategory(opt.value)}
+                    options={[
+                      { value: "Trip & Travel", label: "Trip & Travel" },
+                      { value: "Roommates", label: "Roommates / Flat" },
+                      { value: "Project / Event", label: "Project / Event" },
+                      { value: "Dining & Outing", label: "Dining & Outing" },
+                      { value: "Office & Work", label: "Office & Work" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
             </Row>
@@ -901,35 +911,40 @@ export default function GroupsSplit() {
               <Col xs={12} md={6}>
                 <Form.Group>
                   <Form.Label className="ur-form-label">Category</Form.Label>
-                  <Form.Select
-                    value={expenseForm.category}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="Dining">Dining &amp; Food</option>
-                    <option value="Hotel">Hotel &amp; Stay</option>
-                    <option value="Transport">Transport &amp; Cab</option>
-                    <option value="Groceries">Groceries</option>
-                    <option value="Utilities">Utilities &amp; Bills</option>
-                    <option value="Activities">Activities &amp; Fun</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "Dining", label: "Dining & Food" },
+                      { value: "Hotel", label: "Hotel & Stay" },
+                      { value: "Transport", label: "Transport & Cab" },
+                      { value: "Groceries", label: "Groceries" },
+                      { value: "Utilities", label: "Utilities & Bills" },
+                      { value: "Activities", label: "Activities & Fun" },
+                    ].find((c) => c.value === expenseForm.category)}
+                    onChange={(opt) => setExpenseForm({ ...expenseForm, category: opt.value })}
+                    options={[
+                      { value: "Dining", label: "Dining & Food" },
+                      { value: "Hotel", label: "Hotel & Stay" },
+                      { value: "Transport", label: "Transport & Cab" },
+                      { value: "Groceries", label: "Groceries" },
+                      { value: "Utilities", label: "Utilities & Bills" },
+                      { value: "Activities", label: "Activities & Fun" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
             </Row>
 
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Paid By *</Form.Label>
-              <Form.Select
-                value={expenseForm.paidBy}
-                onChange={(e) => setExpenseForm({ ...expenseForm, paidBy: e.target.value })}
-                className="ur-form-input fw-600"
-              >
-                {activeGroup?.members.map((m) => (
-                  <option key={m.id} value={m.name}>
-                    {m.name}
-                  </option>
-                ))}
-              </Form.Select>
+              <Select
+                value={activeGroup?.members.map((m) => ({ value: m.name, label: m.name })).find((m) => m.value === expenseForm.paidBy) || { value: activeGroup?.members[0]?.name, label: activeGroup?.members[0]?.name }}
+                onChange={(opt) => setExpenseForm({ ...expenseForm, paidBy: opt.value })}
+                options={activeGroup?.members.map((m) => ({ value: m.name, label: m.name })) || []}
+                styles={formSelectStyles}
+                menuPortalTarget={document.body}
+              />
             </Form.Group>
 
             <div className="p-2 rounded-6px bg-light border text-center fs-11px text-muted mt-2">

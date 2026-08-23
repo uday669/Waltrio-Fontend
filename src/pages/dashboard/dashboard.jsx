@@ -691,7 +691,12 @@ export default function Dashboard() {
                     </h5>
                     <p className="text-muted fs-11px mb-0">Active targets &amp; milestones</p>
                   </div>
-                  <Button variant="outline-primary" size="sm" className="ms-btn-goal-add">
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    className="ms-btn-goal-add"
+                    onClick={() => navigate("/goals")}
+                  >
                     + New Goal
                   </Button>
                 </div>

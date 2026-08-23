@@ -8,6 +8,8 @@ import Badge from "react-bootstrap/Badge";
 import Modal from "react-bootstrap/Modal";
 import Form from "react-bootstrap/Form";
 import Chart from "react-apexcharts";
+import Select from "react-select";
+import { filterSelectStyles, formSelectStyles } from "../../utils/selectStyles";
 import {
   FiArrowUpRight,
   FiArrowDownLeft,
@@ -643,34 +645,50 @@ export default function Transactions() {
         filters={
           <div className="ur-inline-filters">
             {/* Type Filter */}
-            <Form.Select
-              size="sm"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="ur-filter-select"
-            >
-              <option value="all">All Types</option>
-              <option value="income">Income (+)</option>
-              <option value="expense">Expense (-)</option>
-            </Form.Select>
+            <Select
+              value={[
+                { value: "all", label: "All Types" },
+                { value: "income", label: "Income (+)" },
+                { value: "expense", label: "Expense (-)" },
+              ].find((t) => t.value === selectedType)}
+              onChange={(opt) => setSelectedType(opt ? opt.value : "all")}
+              options={[
+                { value: "all", label: "All Types" },
+                { value: "income", label: "Income (+)" },
+                { value: "expense", label: "Expense (-)" },
+              ]}
+              styles={filterSelectStyles}
+              isSearchable={false}
+            />
 
             {/* Category Filter */}
-            <Form.Select
-              size="sm"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="ur-filter-select"
-            >
-              <option value="all">All Categories</option>
-              <option value="Salary">Salary</option>
-              <option value="Freelance">Freelance</option>
-              <option value="Rental">Rental</option>
-              <option value="Housing">Housing</option>
-              <option value="Food & Dining">Food & Dining</option>
-              <option value="Shopping">Shopping</option>
-              <option value="Utilities">Utilities</option>
-              <option value="Transportation">Transportation</option>
-            </Form.Select>
+            <Select
+              value={[
+                { value: "all", label: "All Categories" },
+                { value: "Salary", label: "Salary" },
+                { value: "Freelance", label: "Freelance" },
+                { value: "Rental", label: "Rental" },
+                { value: "Housing", label: "Housing" },
+                { value: "Food & Dining", label: "Food & Dining" },
+                { value: "Shopping", label: "Shopping" },
+                { value: "Utilities", label: "Utilities" },
+                { value: "Transportation", label: "Transportation" },
+              ].find((c) => c.value === selectedCategory)}
+              onChange={(opt) => setSelectedCategory(opt ? opt.value : "all")}
+              options={[
+                { value: "all", label: "All Categories" },
+                { value: "Salary", label: "Salary" },
+                { value: "Freelance", label: "Freelance" },
+                { value: "Rental", label: "Rental" },
+                { value: "Housing", label: "Housing" },
+                { value: "Food & Dining", label: "Food & Dining" },
+                { value: "Shopping", label: "Shopping" },
+                { value: "Utilities", label: "Utilities" },
+                { value: "Transportation", label: "Transportation" },
+              ]}
+              styles={filterSelectStyles}
+              isSearchable={false}
+            />
           </div>
         }
       />
@@ -689,14 +707,19 @@ export default function Transactions() {
               <Col xs={12} md={6}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Transaction Type *</Form.Label>
-                  <Form.Select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="ur-form-input fw-600"
-                  >
-                    <option value="income">Income (Cash Inflow +)</option>
-                    <option value="expense">Expense (Cash Outflow -)</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "income", label: "Income (Cash Inflow +)" },
+                      { value: "expense", label: "Expense (Cash Outflow -)" },
+                    ].find((t) => t.value === formData.type)}
+                    onChange={(opt) => setFormData({ ...formData, type: opt.value })}
+                    options={[
+                      { value: "income", label: "Income (Cash Inflow +)" },
+                      { value: "expense", label: "Expense (Cash Outflow -)" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
               <Col xs={12} md={6}>
@@ -729,35 +752,53 @@ export default function Transactions() {
               <Col xs={12} md={6}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Category</Form.Label>
-                  <Form.Select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="Salary">Salary</option>
-                    <option value="Freelance">Freelance</option>
-                    <option value="Food & Dining">Food & Dining</option>
-                    <option value="Housing">Housing</option>
-                    <option value="Utilities">Utilities</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Transportation">Transportation</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "Salary", label: "Salary" },
+                      { value: "Freelance", label: "Freelance" },
+                      { value: "Food & Dining", label: "Food & Dining" },
+                      { value: "Housing", label: "Housing" },
+                      { value: "Utilities", label: "Utilities" },
+                      { value: "Shopping", label: "Shopping" },
+                      { value: "Transportation", label: "Transportation" },
+                    ].find((c) => c.value === formData.category)}
+                    onChange={(opt) => setFormData({ ...formData, category: opt.value })}
+                    options={[
+                      { value: "Salary", label: "Salary" },
+                      { value: "Freelance", label: "Freelance" },
+                      { value: "Food & Dining", label: "Food & Dining" },
+                      { value: "Housing", label: "Housing" },
+                      { value: "Utilities", label: "Utilities" },
+                      { value: "Shopping", label: "Shopping" },
+                      { value: "Transportation", label: "Transportation" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
               <Col xs={12} md={6}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Account / Method</Form.Label>
-                  <Form.Select
-                    value={formData.account}
-                    onChange={(e) => setFormData({ ...formData, account: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="HDFC Bank •••• 4091">HDFC Bank •••• 4091</option>
-                    <option value="ICICI Bank •••• 9821">ICICI Bank •••• 9821</option>
-                    <option value="PhonePe UPI">PhonePe UPI</option>
-                    <option value="GPay UPI">GPay UPI</option>
-                    <option value="Visa •••• 8820">Visa Credit Card</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
+                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
+                      { value: "PhonePe UPI", label: "PhonePe UPI" },
+                      { value: "GPay UPI", label: "GPay UPI" },
+                      { value: "Visa •••• 8820", label: "Visa Credit Card" },
+                    ].find((a) => a.value === formData.account)}
+                    onChange={(opt) => setFormData({ ...formData, account: opt.value })}
+                    options={[
+                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
+                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
+                      { value: "PhonePe UPI", label: "PhonePe UPI" },
+                      { value: "GPay UPI", label: "GPay UPI" },
+                      { value: "Visa •••• 8820", label: "Visa Credit Card" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
               <Col xs={12} md={6}>
@@ -768,6 +809,35 @@ export default function Transactions() {
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     className="ur-form-input"
+                  />
+                </Form.Group>
+              </Col>
+              <Col xs={12} md={6}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="ur-form-label">Time</Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    className="ur-form-input"
+                  />
+                </Form.Group>
+              </Col>
+              <Col xs={12} md={6}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="ur-form-label">Status</Form.Label>
+                  <Select
+                    value={[
+                      { value: "Completed", label: "Completed" },
+                      { value: "Pending", label: "Pending" },
+                    ].find((s) => s.value === formData.status)}
+                    onChange={(opt) => setFormData({ ...formData, status: opt.value })}
+                    options={[
+                      { value: "Completed", label: "Completed" },
+                      { value: "Pending", label: "Pending" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
                   />
                 </Form.Group>
               </Col>
@@ -833,34 +903,51 @@ export default function Transactions() {
               <Col xs={12} md={6}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Category</Form.Label>
-                  <Form.Select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="Salary">Salary</option>
-                    <option value="Freelance">Freelance</option>
-                    <option value="Food & Dining">Food & Dining</option>
-                    <option value="Housing">Housing</option>
-                    <option value="Utilities">Utilities</option>
-                    <option value="Shopping">Shopping</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "Salary", label: "Salary" },
+                      { value: "Freelance", label: "Freelance" },
+                      { value: "Food & Dining", label: "Food & Dining" },
+                      { value: "Housing", label: "Housing" },
+                      { value: "Utilities", label: "Utilities" },
+                      { value: "Shopping", label: "Shopping" },
+                    ].find((c) => c.value === formData.category)}
+                    onChange={(opt) => setFormData({ ...formData, category: opt.value })}
+                    options={[
+                      { value: "Salary", label: "Salary" },
+                      { value: "Freelance", label: "Freelance" },
+                      { value: "Food & Dining", label: "Food & Dining" },
+                      { value: "Housing", label: "Housing" },
+                      { value: "Utilities", label: "Utilities" },
+                      { value: "Shopping", label: "Shopping" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
               <Col xs={12} md={6}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Account</Form.Label>
-                  <Form.Select
-                    value={formData.account}
-                    onChange={(e) => setFormData({ ...formData, account: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="HDFC Bank •••• 4091">HDFC Bank •••• 4091</option>
-                    <option value="ICICI Bank •••• 9821">ICICI Bank •••• 9821</option>
-                    <option value="PhonePe UPI">PhonePe UPI</option>
-                    <option value="GPay UPI">GPay UPI</option>
-                    <option value="Visa •••• 8820">Visa Credit Card</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
+                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
+                      { value: "PhonePe UPI", label: "PhonePe UPI" },
+                      { value: "GPay UPI", label: "GPay UPI" },
+                      { value: "Visa •••• 8820", label: "Visa Credit Card" },
+                    ].find((a) => a.value === formData.account)}
+                    onChange={(opt) => setFormData({ ...formData, account: opt.value })}
+                    options={[
+                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
+                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
+                      { value: "PhonePe UPI", label: "PhonePe UPI" },
+                      { value: "GPay UPI", label: "GPay UPI" },
+                      { value: "Visa •••• 8820", label: "Visa Credit Card" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
             </Row>

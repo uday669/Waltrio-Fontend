@@ -26,6 +26,8 @@ import {
   FiEye,
 } from "react-icons/fi";
 import { BsBank2 } from "react-icons/bs";
+import Select from "react-select";
+import { formSelectStyles } from "../../utils/selectStyles";
 import CommonDataTable from "../../components/common/DataTable";
 
 // Initial Mock Dataset for Loans & EMIs
@@ -546,17 +548,25 @@ export default function EmiLoans() {
               <Col xs={12} md={6}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Lender Bank *</Form.Label>
-                  <Form.Select
-                    value={loanFormData.bank}
-                    onChange={(e) => setLoanFormData({ ...loanFormData, bank: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="HDFC Bank">HDFC Bank</option>
-                    <option value="ICICI Bank">ICICI Bank</option>
-                    <option value="SBI Bank">SBI Bank</option>
-                    <option value="Axis Bank">Axis Bank</option>
-                    <option value="Bajaj Finserv">Bajaj Finserv</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "HDFC Bank", label: "HDFC Bank" },
+                      { value: "ICICI Bank", label: "ICICI Bank" },
+                      { value: "SBI Bank", label: "SBI Bank" },
+                      { value: "Axis Bank", label: "Axis Bank" },
+                      { value: "Bajaj Finserv", label: "Bajaj Finserv" },
+                    ].find((b) => b.value === loanFormData.bank)}
+                    onChange={(opt) => setLoanFormData({ ...loanFormData, bank: opt.value })}
+                    options={[
+                      { value: "HDFC Bank", label: "HDFC Bank" },
+                      { value: "ICICI Bank", label: "ICICI Bank" },
+                      { value: "SBI Bank", label: "SBI Bank" },
+                      { value: "Axis Bank", label: "Axis Bank" },
+                      { value: "Bajaj Finserv", label: "Bajaj Finserv" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
 
