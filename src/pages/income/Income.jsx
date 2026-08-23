@@ -26,6 +26,10 @@ import {
   FiPieChart,
   FiRepeat,
   FiAlertCircle,
+  FiPaperclip,
+  FiX,
+  FiImage,
+  FiUploadCloud,
 } from "react-icons/fi";
 import { BsBank2 } from "react-icons/bs";
 import { IoWalletOutline } from "react-icons/io5";
@@ -212,7 +216,7 @@ export default function Income() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [activeIncome, setActiveIncome] = useState(null);
 
-  // Form State
+  // Form State with Receipt Image Support
   const [formData, setFormData] = useState({
     source: "",
     description: "",
@@ -225,7 +229,29 @@ export default function Income() {
     isRecurring: false,
     referenceNo: "",
     notes: "",
+    receiptImg: null,
+    receiptName: "",
   });
+
+  // Modal for Viewing Full Receipt Image
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [previewReceiptImg, setPreviewReceiptImg] = useState(null);
+
+  // File Upload Handler (Converts to Data URL for instant preview)
+  const handleReceiptFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({
+          ...prev,
+          receiptImg: reader.result,
+          receiptName: file.name,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Calculate Metrics
   const metrics = useMemo(() => {
@@ -966,6 +992,54 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
+              {/* Bill / Receipt Image Upload Dropzone */}
+              <Col xs={12}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="ur-form-label d-flex align-items-center justify-content-between">
+                    <span>Attach Bill / Salary Slip / Receipt Image</span>
+                    {formData.receiptImg && (
+                      <span className="text-success fs-11px fw-600">✓ Image Attached</span>
+                    )}
+                  </Form.Label>
+
+                  {!formData.receiptImg ? (
+                    <div className="ur-receipt-upload-box">
+                      <input
+                        type="file"
+                        id="income-receipt-file-add"
+                        accept="image/*,application/pdf"
+                        onChange={handleReceiptFileChange}
+                        style={{ display: "none" }}
+                      />
+                      <label htmlFor="income-receipt-file-add" className="w-100 cursor-pointer mb-0">
+                        <FiPaperclip size={20} className="text-primary mb-1" />
+                        <div className="fw-700 text-dark fs-12px">Click to Upload Bill / Receipt Image</div>
+                        <span className="text-muted fs-11px">Supports PNG, JPG, JPEG, PDF receipt</span>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="ur-receipt-preview-card">
+                      <img src={formData.receiptImg} alt="Receipt preview" className="ur-receipt-thumb" />
+                      <div className="flex-grow-1">
+                        <div className="fw-700 text-dark fs-12px text-truncate" style={{ maxWidth: "260px" }}>
+                          {formData.receiptName || "Uploaded_Receipt_Image.png"}
+                        </div>
+                        <span className="text-success fs-10.5px fw-600">Receipt image loaded</span>
+                      </div>
+                      <Button
+                        variant="light"
+                        size="sm"
+                        className="text-danger p-1 border rounded-6px"
+                        onClick={() => setFormData({ ...formData, receiptImg: null, receiptName: "" })}
+                        title="Remove Image"
+                      >
+                        <FiX size={14} />
+                      </Button>
+                    </div>
+                  )}
+                </Form.Group>
+              </Col>
+
               <Col xs={12}>
                 <Form.Check
                   type="checkbox"
@@ -1110,6 +1184,54 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
+              {/* Bill / Receipt Image Upload Dropzone */}
+              <Col xs={12}>
+                <Form.Group className="mb-2">
+                  <Form.Label className="ur-form-label d-flex align-items-center justify-content-between">
+                    <span>Attached Bill / Salary Slip / Receipt Image</span>
+                    {formData.receiptImg && (
+                      <span className="text-success fs-11px fw-600">✓ Image Attached</span>
+                    )}
+                  </Form.Label>
+
+                  {!formData.receiptImg ? (
+                    <div className="ur-receipt-upload-box">
+                      <input
+                        type="file"
+                        id="income-receipt-file-edit"
+                        accept="image/*,application/pdf"
+                        onChange={handleReceiptFileChange}
+                        style={{ display: "none" }}
+                      />
+                      <label htmlFor="income-receipt-file-edit" className="w-100 cursor-pointer mb-0">
+                        <FiPaperclip size={20} className="text-primary mb-1" />
+                        <div className="fw-700 text-dark fs-12px">Click to Upload Bill / Receipt Image</div>
+                        <span className="text-muted fs-11px">Supports PNG, JPG, JPEG, PDF receipt</span>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="ur-receipt-preview-card">
+                      <img src={formData.receiptImg} alt="Receipt preview" className="ur-receipt-thumb" />
+                      <div className="flex-grow-1">
+                        <div className="fw-700 text-dark fs-12px text-truncate" style={{ maxWidth: "260px" }}>
+                          {formData.receiptName || "Uploaded_Receipt_Image.png"}
+                        </div>
+                        <span className="text-success fs-10.5px fw-600">Receipt image loaded</span>
+                      </div>
+                      <Button
+                        variant="light"
+                        size="sm"
+                        className="text-danger p-1 border rounded-6px"
+                        onClick={() => setFormData({ ...formData, receiptImg: null, receiptName: "" })}
+                        title="Remove Image"
+                      >
+                        <FiX size={14} />
+                      </Button>
+                    </div>
+                  )}
+                </Form.Group>
+              </Col>
+
               <Col xs={12}>
                 <Form.Check
                   type="checkbox"
@@ -1158,7 +1280,7 @@ export default function Income() {
       </Modal>
 
       {/* ===================================================================
-          MODAL: VIEW DETAILS
+          MODAL: VIEW DETAILS WITH RECEIPT PREVIEW
           =================================================================== */}
       <Modal show={showDetailsModal} onHide={() => setShowDetailsModal(false)} centered size="md" className="ur-modal">
         <Modal.Header closeButton className="border-0 pb-0">
@@ -1208,11 +1330,40 @@ export default function Income() {
                   <span className="text-muted">Reference / UTR:</span>
                   <span className="fw-600 text-muted font-monospace">{activeIncome.referenceNo || "N/A"}</span>
                 </div>
-                <div className="d-flex justify-content-between py-1">
+                <div className="d-flex justify-content-between py-1 border-bottom">
                   <span className="text-muted">Notes:</span>
                   <span className="fw-500 text-dark text-end" style={{ maxWidth: "240px" }}>
                     {activeIncome.notes || activeIncome.description || "None"}
                   </span>
+                </div>
+
+                {/* Attached Receipt Preview */}
+                <div className="py-2">
+                  <span className="text-muted d-block mb-1">Attached Bill / Receipt:</span>
+                  {activeIncome.receiptImg ? (
+                    <div className="d-flex align-items-center gap-2 p-2 border rounded-8px bg-light">
+                      <img src={activeIncome.receiptImg} alt="Receipt" className="ur-receipt-thumb" />
+                      <div className="flex-grow-1">
+                        <div className="fw-700 text-dark fs-12px">{activeIncome.receiptName || "Salary_Slip_Aug2026.png"}</div>
+                        <span className="text-success fs-10.5px fw-600">Verified receipt document</span>
+                      </div>
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        className="fs-11px py-1 px-2"
+                        onClick={() => {
+                          setPreviewReceiptImg(activeIncome.receiptImg);
+                          setShowReceiptModal(true);
+                        }}
+                      >
+                        View Full
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="p-2 border rounded-8px bg-light text-muted fs-11.5px">
+                      📄 No physical receipt attached (Standard electronic ledger transfer)
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1223,6 +1374,26 @@ export default function Income() {
             Close
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* ===================================================================
+          MODAL: FULL RECEIPT IMAGE PREVIEW
+          =================================================================== */}
+      <Modal show={showReceiptModal} onHide={() => setShowReceiptModal(false)} centered size="lg" className="ur-modal">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-700 fs-16px text-dark">
+            Bill / Receipt Image Preview
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center p-3">
+          {previewReceiptImg && (
+            <img
+              src={previewReceiptImg}
+              alt="Receipt Full Preview"
+              style={{ maxWidth: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: "8px" }}
+            />
+          )}
+        </Modal.Body>
       </Modal>
     </Container>
   );
