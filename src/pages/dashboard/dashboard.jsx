@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -32,6 +33,7 @@ import { BsBank2, BsStars } from "react-icons/bs";
 import { SiGooglepay, SiPhonepe } from "react-icons/si";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   // Select2 Options for Chart (Compact)
   const timePeriodOptions = [
     { value: "weekly", label: "Weekly" },
@@ -353,11 +355,11 @@ export default function Dashboard() {
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          <Button className="ms-btn-income">
+          <Button className="ms-btn-income" onClick={() => navigate("/income")}>
             <FiPlus size={13} />
             <span>Add Income</span>
           </Button>
-          <Button className="ms-btn-expense">
+          <Button className="ms-btn-expense" onClick={() => navigate("/expenses")}>
             <FiMinus size={13} />
             <span>Add Expense</span>
           </Button>

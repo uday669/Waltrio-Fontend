@@ -22,8 +22,8 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const navItems = [
     { name: "Dashboard", icon: <FiGrid size={18} />, path: "/dashboard" },
-    { name: "Income", icon: <FiArrowUp size={18} />, path: "#income" },
-    { name: "Expenses", icon: <FiArrowDown size={18} />, path: "#expenses" },
+    { name: "Income", icon: <FiArrowUp size={18} />, path: "/income" },
+    { name: "Expenses", icon: <FiArrowDown size={18} />, path: "/expenses" },
     { name: "Transactions", icon: <FiRepeat size={18} />, path: "#transactions" },
     { name: "Budgets", icon: <FiPieChart size={18} />, path: "#budgets" },
     { name: "Groups & Split", icon: <FiUsers size={18} />, path: "#split" },

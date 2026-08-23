@@ -5,6 +5,8 @@ import Register from '../pages/Auth/registra';
 import AuthOtp from '../pages/Auth/authOtp';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/dashboard/dashboard';
+import Income from '../pages/income/Income';
+import Expenses from '../pages/expenses/Expenses';
 
 export default function Routing() {
   return (
@@ -20,6 +22,8 @@ export default function Routing() {
       {/* Protected / Dashboard Layout Routes */}
       <Route element={<MainLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/income" element={<Income />} />
+        <Route path="/expenses" element={<Expenses />} />
       </Route>
 
       {/* Catch-all fallback */}
