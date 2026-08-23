@@ -1,7 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import Nav from "react-bootstrap/Nav";
-import Badge from "react-bootstrap/Badge";
 import {
   FiGrid,
   FiArrowUp,
@@ -14,14 +13,15 @@ import {
   FiFileText,
   FiBell,
   FiSettings,
+  FiX,
 } from "react-icons/fi";
 import { IoWalletOutline } from "react-icons/io5";
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
 
   const navItems = [
-    { name: "Dashboard", icon: <FiGrid size={18} />, path: "/dashboard", active: true },
+    { name: "Dashboard", icon: <FiGrid size={18} />, path: "/dashboard" },
     { name: "Income", icon: <FiArrowUp size={18} />, path: "#income" },
     { name: "Expenses", icon: <FiArrowDown size={18} />, path: "#expenses" },
     { name: "Transactions", icon: <FiRepeat size={18} />, path: "#transactions" },
@@ -35,31 +35,45 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="ur-sidebar">
+    <aside className={`ur-sidebar ${isOpen ? "show" : ""}`}>
       <div className="ur-sidebar-top">
-        {/* Brand Logo */}
-        <Link to="/dashboard" className="ur-brand-logo">
-          <div className="ur-brand-icon">
-            <IoWalletOutline size={22} />
-          </div>
-          <span className="ur-brand-name">
-            Wal<span>trio</span>
-          </span>
-        </Link>
+        {/* Brand Logo + Mobile Close Button */}
+        <div className="ur-sidebar-header">
+          <Link to="/dashboard" className="ur-brand-logo">
+            <div className="ur-brand-icon">
+              <IoWalletOutline size={22} />
+            </div>
+            <span className="ur-brand-name">
+              Wal<span>trio</span>
+            </span>
+          </Link>
+
+          {/* Close Button - visible only on mobile/tablet */}
+          <button
+            className="ur-sidebar-close-btn"
+            onClick={onClose}
+            aria-label="Close sidebar"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
 
         {/* Navigation List */}
         <Nav className="flex-column ur-nav-list">
-          {navItems.map((item, idx) => (
-            <Nav.Item key={idx}>
-              <Link
-                to={item.path}
-                className={`ur-nav-item ${item.active ? "active" : ""}`}
-              >
-                <span className="ur-nav-icon">{item.icon}</span>
-                <span className="ur-nav-text">{item.name}</span>
-              </Link>
-            </Nav.Item>
-          ))}
+          {navItems.map((item, idx) => {
+            const isActive = item.path === location.pathname;
+            return (
+              <Nav.Item key={idx}>
+                <Link
+                  to={item.path}
+                  className={`ur-nav-item ${isActive ? "active" : ""}`}
+                >
+                  <span className="ur-nav-icon">{item.icon}</span>
+                  <span className="ur-nav-text">{item.name}</span>
+                </Link>
+              </Nav.Item>
+            );
+          })}
         </Nav>
       </div>
     </aside>

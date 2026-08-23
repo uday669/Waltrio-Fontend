@@ -3,28 +3,80 @@
    Responsive Breakpoints: 1199px, 991px, 767px, 575px
    ========================================================================== */
 
+/* ==========================
+   TABLET & MOBILE (< 992px)
+   Sidebar becomes a slide-in drawer
+   ========================== */
 @media (max-width: 991px) {
+  /* Sidebar: slide off-screen by default */
   .ur-sidebar {
     transform: translateX(-100%);
+    box-shadow: none;
+    z-index: 1199;
   }
 
+  /* Sidebar: slide in when open */
   .ur-sidebar.show {
     transform: translateX(0);
+    box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
   }
 
+  /* Show close button inside sidebar */
+  .ur-sidebar-close-btn {
+    display: flex;
+  }
+
+  /* Show hamburger in header */
+  .ur-hamburger-btn {
+    display: flex;
+  }
+
+  /* Show overlay and enable it */
+  .ur-sidebar-overlay {
+    display: block;
+  }
+
+  .ur-sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Remove sidebar margin from main content */
   .dashboard-main-wrapper {
     margin-left: 0;
   }
 
+  /* Adjust content padding */
   .dashboard-content {
     padding: 20px 16px;
   }
 
+  /* Adjust header padding */
   .ur-top-header {
     padding: 0 16px;
+    height: 58px;
+  }
+
+  /* Hide breadcrumb text on mobile/tablet to save space */
+  .ur-breadcrumb-text {
+    display: none;
+  }
+
+  /* Reduce header action gap */
+  .ur-header-actions {
+    gap: 10px;
+  }
+
+  /* Reduce Add Transaction button text */
+  .btn-add-transaction span {
+    font-size: 11px !important;
   }
 }
 
+/* ==========================
+   MOBILE (< 768px)
+   Compact header & smaller elements
+   ========================== */
 @media (max-width: 767px) {
   .ms-greeting-title {
     font-size: 20px;
@@ -37,8 +89,46 @@
   .ur-header-actions {
     gap: 8px;
   }
+
+  /* Smaller bell button on mobile */
+  .ur-bell-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  /* Smaller avatar on mobile */
+  .ur-user-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  /* Compact hamburger on mobile */
+  .ur-hamburger-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  /* Make Add Transaction icon-only on small mobile */
+  .btn-add-transaction {
+    padding: 6px 8px !important;
+    min-width: 34px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    border-radius: 50% !important;
+  }
+
+  .btn-add-transaction span {
+    display: none !important;
+  }
 }
 
+/* ==========================
+   SMALL PHONES (< 576px)
+   Maximum compactness
+   ========================== */
 @media (max-width: 575px) {
   .dashboard-content {
     padding: 14px 10px;
@@ -48,8 +138,50 @@
     font-size: 18px;
   }
 
+  /* Narrower sidebar on very small phones */
+  .ur-sidebar {
+    width: 260px;
+  }
+
+  /* Tighter header */
+  .ur-top-header {
+    padding: 0 12px;
+    height: 52px;
+  }
+
+  .ur-header-actions {
+    gap: 6px;
+  }
+
+  /* Even smaller interactive elements */
+  .ur-bell-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ur-bell-badge {
+    width: 14px;
+    height: 14px;
+    font-size: 8px;
+  }
+
+  .ur-user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .ur-hamburger-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+
   .btn-add-transaction {
-    padding: 6px 10px !important;
-    font-size: 11.5px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    min-width: 32px !important;
   }
 }

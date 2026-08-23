@@ -521,32 +521,32 @@ export default function Dashboard() {
                   <h5 className="ms-card-title mb-0">Budget Overview</h5>
                   <p className="text-muted fs-11px mb-0">Monthly budget consumption</p>
                 </div>
-                <Badge bg="success-subtle" className="text-success fw-700 fs-10px py-1 px-7px rounded-6px">
+                <Badge bg="success-subtle" className="text-success fw-700 fs-10px py-1 px-2 rounded-6px">
                   On Track
                 </Badge>
               </div>
 
-              {/* Monthly Budget Top Row */}
+              {/* Monthly Budget Summary Card */}
               <div className="ms-budget-metric-card p-2 px-3 rounded-10px mb-3">
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
                     <div className="ms-mini-label">Monthly Limit</div>
                     <div className="ms-budget-main-val">₹30,000</div>
                   </div>
-                  <div>
+                  <div className="text-center">
                     <div className="ms-mini-label">Spent so far</div>
                     <div className="ms-budget-used-val">₹20,500</div>
                   </div>
-                  <div>
+                  <div className="text-end">
                     <div className="ms-mini-label">Available</div>
                     <div className="ms-budget-rem-val">₹9,500</div>
                   </div>
                 </div>
 
                 <div className="mt-2">
-                  <div className="d-flex justify-content-between fs-11.5px mb-1">
-                    <span className="text-muted fw-600">Total Spent</span>
-                    <span className="fw-800 text-primary">68%</span>
+                  <div className="d-flex justify-content-between mb-1">
+                    <span className="text-muted fw-600 fs-11px">Total Spent</span>
+                    <span className="fw-800 text-primary fs-11px">68%</span>
                   </div>
                   <ProgressBar
                     now={68}
@@ -556,57 +556,121 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Category Allocations with TALLER BARS */}
+              {/* Category Allocations — Premium Design */}
               <div>
                 <div className="ms-cat-budget-heading mb-2">Category Allocations</div>
-                <div className="d-flex flex-column gap-2 fs-11.5px">
-                  <div className="p-2 rounded-8px bg-light-subtle">
-                    <div className="d-flex justify-content-between mb-1">
-                      <span className="text-dark fw-600">Food &amp; Dining</span>
-                      <span className="text-muted">₹4,400 of ₹6,000 (73%)</span>
+                <div className="d-flex flex-column gap-2">
+
+                  {/* Food & Dining */}
+                  <div className="ms-cat-alloc-card">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#f5f3ff", color: "#8b5cf6" }}>
+                          <FiCoffee size={14} />
+                        </div>
+                        <div>
+                          <div className="ms-cat-name">Food &amp; Dining</div>
+                          <div className="ms-cat-amount-info">₹4,400 <span className="text-muted">of ₹6,000</span></div>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="ms-cat-percent" style={{ color: "#8b5cf6" }}>73%</div>
+                        <span className="ms-cat-status-badge warning">Warning</span>
+                      </div>
                     </div>
-                    <ProgressBar
-                      now={73}
-                      className="ms-progress-purple"
-                      style={{ height: "8px" }}
-                    />
+                    <div className="ms-cat-progress-track">
+                      <div className="ms-cat-progress-fill" style={{ width: "73%", background: "linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%)" }}></div>
+                    </div>
                   </div>
 
-                  <div className="p-2 rounded-8px bg-light-subtle">
-                    <div className="d-flex justify-content-between mb-1">
-                      <span className="text-dark fw-600">Housing &amp; Rent</span>
-                      <span className="text-muted">₹8,000 of ₹10,000 (80%)</span>
+                  {/* Housing & Rent */}
+                  <div className="ms-cat-alloc-card">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#eef2ff", color: "#4f46e5" }}>
+                          <FiHome size={14} />
+                        </div>
+                        <div>
+                          <div className="ms-cat-name">Housing &amp; Rent</div>
+                          <div className="ms-cat-amount-info">₹8,000 <span className="text-muted">of ₹10,000</span></div>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="ms-cat-percent" style={{ color: "#ef4444" }}>80%</div>
+                        <span className="ms-cat-status-badge danger">Over Limit</span>
+                      </div>
                     </div>
-                    <ProgressBar
-                      now={80}
-                      className="ms-progress-blue"
-                      style={{ height: "8px" }}
-                    />
+                    <div className="ms-cat-progress-track">
+                      <div className="ms-cat-progress-fill" style={{ width: "80%", background: "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)" }}></div>
+                    </div>
                   </div>
 
-                  <div className="p-2 rounded-8px bg-light-subtle">
-                    <div className="d-flex justify-content-between mb-1">
-                      <span className="text-dark fw-600">Transportation</span>
-                      <span className="text-muted">₹2,250 of ₹4,000 (56%)</span>
+                  {/* Transportation */}
+                  <div className="ms-cat-alloc-card">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#fffbeb", color: "#d97706" }}>
+                          <FiArrowRight size={14} />
+                        </div>
+                        <div>
+                          <div className="ms-cat-name">Transportation</div>
+                          <div className="ms-cat-amount-info">₹2,250 <span className="text-muted">of ₹4,000</span></div>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="ms-cat-percent" style={{ color: "#d97706" }}>56%</div>
+                        <span className="ms-cat-status-badge success">On Track</span>
+                      </div>
                     </div>
-                    <ProgressBar
-                      now={56}
-                      className="ms-progress-orange"
-                      style={{ height: "8px" }}
-                    />
+                    <div className="ms-cat-progress-track">
+                      <div className="ms-cat-progress-fill" style={{ width: "56%", background: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)" }}></div>
+                    </div>
                   </div>
 
-                  <div className="p-2 rounded-8px bg-light-subtle">
-                    <div className="d-flex justify-content-between mb-1">
-                      <span className="text-dark fw-600">Shopping &amp; Retail</span>
-                      <span className="text-muted">₹1,850 of ₹3,000 (61%)</span>
+                  {/* Shopping & Retail */}
+                  <div className="ms-cat-alloc-card">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#ecfdf5", color: "#059669" }}>
+                          <FiShoppingBag size={14} />
+                        </div>
+                        <div>
+                          <div className="ms-cat-name">Shopping &amp; Retail</div>
+                          <div className="ms-cat-amount-info">₹1,850 <span className="text-muted">of ₹3,000</span></div>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="ms-cat-percent" style={{ color: "#059669" }}>61%</div>
+                        <span className="ms-cat-status-badge success">On Track</span>
+                      </div>
                     </div>
-                    <ProgressBar
-                      now={61}
-                      className="ms-progress-green"
-                      style={{ height: "8px" }}
-                    />
+                    <div className="ms-cat-progress-track">
+                      <div className="ms-cat-progress-fill" style={{ width: "61%", background: "linear-gradient(90deg, #10b981 0%, #34d399 100%)" }}></div>
+                    </div>
                   </div>
+
+                  {/* Utilities & Bills */}
+                  <div className="ms-cat-alloc-card">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#ecfeff", color: "#0891b2" }}>
+                          <FiZap size={14} />
+                        </div>
+                        <div>
+                          <div className="ms-cat-name">Utilities &amp; Bills</div>
+                          <div className="ms-cat-amount-info">₹2,200 <span className="text-muted">of ₹4,000</span></div>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="ms-cat-percent" style={{ color: "#0891b2" }}>55%</div>
+                        <span className="ms-cat-status-badge success">On Track</span>
+                      </div>
+                    </div>
+                    <div className="ms-cat-progress-track">
+                      <div className="ms-cat-progress-fill" style={{ width: "55%", background: "linear-gradient(90deg, #06b6d4 0%, #22d3ee 100%)" }}></div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </Card.Body>

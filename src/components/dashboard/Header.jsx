@@ -6,9 +6,10 @@ import {
   FiChevronDown,
   FiBell,
   FiPlus,
+  FiMenu,
 } from "react-icons/fi";
 
-export default function Header() {
+export default function Header({ onToggleSidebar }) {
   const monthOptions = [
     { value: "2026-08", label: "📅 August 2026" },
     { value: "2026-07", label: "📅 July 2026" },
@@ -77,16 +78,25 @@ export default function Header() {
 
   return (
     <header className="ur-top-header">
-      {/* Header Left Title / Breadcrumb */}
-      <div className="d-flex align-items-center">
-        <span className="fs-13px fw-600 text-secondary">
+      {/* Header Left: Hamburger (mobile) + Breadcrumb */}
+      <div className="d-flex align-items-center gap-2">
+        {/* Hamburger Menu Button — visible only on mobile/tablet */}
+        <button
+          className="ur-hamburger-btn"
+          onClick={onToggleSidebar}
+          aria-label="Toggle sidebar menu"
+        >
+          <FiMenu size={20} />
+        </button>
+
+        <span className="ur-breadcrumb-text">
           Dashboard <span className="text-muted mx-1">/</span> <strong className="text-dark">Overview</strong>
         </span>
       </div>
 
       {/* Header Actions on Right */}
       <div className="ur-header-actions">
-        {/* Month Selector */}
+        {/* Month Selector — hidden on small phones */}
         <div className="d-none d-sm-block">
           <Select
             value={selectedMonth}
@@ -114,11 +124,11 @@ export default function Header() {
             <div className="ur-user-avatar">
               <span>U</span>
             </div>
-            <span className="ur-user-name-text">Uday</span>
-            <FiChevronDown size={12} className="text-muted ms-1" />
+            <span className="ur-user-name-text d-none d-md-inline">Uday</span>
+            <FiChevronDown size={12} className="text-muted ms-1 d-none d-md-inline" />
           </Dropdown.Toggle>
 
-          <Dropdown.Menu className="shadow-sm rounded-10px border-0 p-1">
+          <Dropdown.Menu className="shadow-sm rounded-10px border-0 p-1" align="end">
             <Dropdown.Item className="rounded-6px fs-12px">My Profile</Dropdown.Item>
             <Dropdown.Item className="rounded-6px fs-12px">Settings</Dropdown.Item>
             <Dropdown.Divider className="my-1" />
@@ -126,10 +136,10 @@ export default function Header() {
           </Dropdown.Menu>
         </Dropdown>
 
-        {/* Sleek Compact + Add Transaction Button */}
+        {/* Add Transaction Button — text hidden on small screens */}
         <Button className="btn-add-transaction border-0">
           <FiPlus size={13} />
-          <span>Add Transaction</span>
+          <span className="d-none d-sm-inline">Add Transaction</span>
         </Button>
       </div>
     </header>
