@@ -9,7 +9,10 @@ import {
   FiMenu,
 } from "react-icons/fi";
 
+import { useNavigate } from "react-router-dom";
+
 export default function Header({ onToggleSidebar }) {
+  const navigate = useNavigate();
   const monthOptions = [
     { value: "2026-08", label: "📅 August 2026" },
     { value: "2026-07", label: "📅 July 2026" },
@@ -108,36 +111,21 @@ export default function Header({ onToggleSidebar }) {
           />
         </div>
 
-        {/* Bell Icon with Badge 3 */}
-        <button className="ur-bell-btn" aria-label="Notifications">
+        {/* Bell Icon Hidden */}
+        {/* <button
+          className="ur-bell-btn"
+          aria-label="Notifications"
+          onClick={() => navigate("/notifications")}
+        >
           <FiBell size={15} />
           <span className="ur-bell-badge">3</span>
-        </button>
+        </button> */}
 
-        {/* User Profile */}
-        <Dropdown>
-          <Dropdown.Toggle
-            as="div"
-            className="ur-user-toggle"
-            id="dropdown-user"
-          >
-            <div className="ur-user-avatar">
-              <span>U</span>
-            </div>
-            <span className="ur-user-name-text d-none d-md-inline">Uday</span>
-            <FiChevronDown size={12} className="text-muted ms-1 d-none d-md-inline" />
-          </Dropdown.Toggle>
-
-          <Dropdown.Menu className="shadow-sm rounded-10px border-0 p-1" align="end">
-            <Dropdown.Item className="rounded-6px fs-12px">My Profile</Dropdown.Item>
-            <Dropdown.Item className="rounded-6px fs-12px">Settings</Dropdown.Item>
-            <Dropdown.Divider className="my-1" />
-            <Dropdown.Item className="rounded-6px fs-12px text-danger">Logout</Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
-
-        {/* Add Transaction Button — text hidden on small screens */}
-        <Button className="btn-add-transaction border-0">
+        {/* Add Transaction Button */}
+        <Button
+          className="btn-add-transaction border-0"
+          onClick={() => navigate("/transactions")}
+        >
           <FiPlus size={13} />
           <span className="d-none d-sm-inline">Add Transaction</span>
         </Button>
