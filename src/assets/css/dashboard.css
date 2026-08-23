@@ -1,115 +1,835 @@
+/* ==========================================================================
+   WALTRIO DASHBOARD - DASHBOARD.CSS
+   Theme: #4f46e5 (Indigo/Purple)
+   ========================================================================== */
 
-
-
-.fs-12px {
-  font-size: 12px;
+:root {
+  --ur-theme: #4f46e5;
+  --ur-theme-hover: #4338ca;
+  --ur-theme-light: #eef2ff;
+  --ur-income: #10b981;
+  --ur-expense: #ef4444;
+  --ur-sidebar-w: 230px;
+  --ur-header-h: 68px;
+  --ur-bg-dashboard: #f8fafc;
 }
 
-.fs-14px {
-  font-size: 14px;
+/* Base Layout */
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--ur-bg-dashboard);
+  color: #0f172a;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
 }
 
-.fs-16px {
-  font-size: 16px;
+/* Sidebar */
+.ur-sidebar {
+  width: var(--ur-sidebar-w);
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: #ffffff;
+  border-right: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  overflow-y: auto;
 }
 
-.fs-18px {
-  font-size: 18px;
+.ur-sidebar-top {
+  padding: 22px 14px;
 }
 
-.fs-20px {
-  font-size: 20px;
+/* Sidebar Header (Logo + Close button row) */
+.ur-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
 }
 
-.fs-24px {
-  font-size: 24px;
+.ur-sidebar-header .ur-brand-logo {
+  margin-bottom: 0;
 }
 
-.fs-28px {
-  font-size: 28px;
+/* Close Button — hidden on desktop, shown on mobile/tablet */
+.ur-sidebar-close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: none;
+  color: #64748b;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.fs-32px {
-  font-size: 32px;
+.ur-sidebar-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
-.fs-36px {
-  font-size: 36px;
+/* Hamburger Menu Button — hidden on desktop, shown on mobile/tablet */
+.ur-hamburger-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.fs-40px {
-  font-size: 40px;
+.ur-hamburger-btn:hover {
+  background: #f8fafc;
+  color: #4f46e5;
+  border-color: #cbd5e1;
 }
 
-.fs-48px {
-  font-size: 48px;
+/* Sidebar Overlay (dark backdrop on mobile when sidebar is open) */
+.ur-sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1005;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-.fw-300 {
-  font-weight: 300;
+/* Breadcrumb text in header */
+.ur-breadcrumb-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
 }
 
-.fw-400 {
-  font-weight: 400;
+.ur-brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  margin-bottom: 26px;
+  padding: 0 8px;
 }
 
-.fw-500 {
+.ur-brand-icon {
+  width: 36px;
+  height: 36px;
+  background: #eef2ff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.ur-brand-name {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.ur-brand-name span {
+  color: #4f46e5;
+}
+
+.ur-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ur-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 13px;
   font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.fw-600 {
+.ur-nav-item:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.ur-nav-item.active {
+  background-color: #eef2ff;
+  color: #4f46e5;
   font-weight: 600;
 }
 
-.fw-700 {
+.ur-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Main Area & Sticky Top Header */
+.dashboard-main-wrapper {
+  margin-left: var(--ur-sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--ur-bg-dashboard);
+  min-width: 0;
+}
+
+.ur-top-header {
+  height: var(--ur-header-h);
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+
+
+.ur-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ur-bell-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ur-bell-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.ur-bell-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  background-color: #4f46e5;
+  color: #ffffff;
+  font-size: 9.5px;
   font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #ffffff;
 }
 
-.fw-800 {
+.ur-user-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.ur-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ur-user-name-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Sleek Compact Buttons */
+.btn-add-transaction {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.15);
+  transition: all 0.15s ease !important;
+}
+
+.btn-add-transaction:hover {
+  background-color: #4338ca !important;
+  transform: translateY(-1px);
+}
+
+/* Dashboard Content */
+.dashboard-content {
+  padding: 22px 24px;
+  /* max-width: 1440px; */
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Greeting Header & Compact Action Buttons */
+.ms-greeting-title {
+  font-size: 22px;
   font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
 }
 
-.fw-900 {
-  font-weight: 900;
+.ms-greeting-subtitle {
+  font-size: 12.5px;
+  color: #64748b;
 }
 
-
-
-.rounded-4px {
-  border-radius: 4px;
+.ms-btn-income {
+  background-color: #ffffff !important;
+  border: 1px solid #4f46e5 !important;
+  color: #4f46e5 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.15s ease !important;
 }
 
-.rounded-6px {
-  border-radius: 6px;
+.ms-btn-income:hover {
+  background-color: #eef2ff !important;
 }
 
-.rounded-8px {
+.ms-btn-expense {
+  background-color: #ffffff !important;
+  border: 1px solid #f87171 !important;
+  color: #ef4444 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.15s ease !important;
+}
+
+.ms-btn-expense:hover {
+  background-color: #fff1f2 !important;
+}
+
+.ms-btn-goal-add {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 3px 8px !important;
+  height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+  border-radius: 5px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Premium Card System */
+.ms-premium-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #eef2f6 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ms-premium-card:hover {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.ms-stat-title {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.ms-stat-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.ms-stat-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ms-trend-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ms-trend-pill.positive {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.ms-trend-pill.negative {
+  background-color: #fff1f2;
+  color: #e11d48;
+}
+
+.ms-stat-sub-text {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.ms-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+/* Legend Styles */
+.ms-legend-square {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.ms-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Budget Card */
+.ms-budget-metric-card {
+  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.ms-mini-label {
+  font-size: 10.5px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.ms-budget-main-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ms-budget-used-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ef4444;
+}
+
+.ms-budget-rem-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.ms-cat-budget-heading {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ========== Category Allocation Cards (Premium) ========== */
+.ms-cat-alloc-card {
+  background: #f8fafc;
+  border: 1px solid #eef2f6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+}
+
+.ms-cat-alloc-card:hover {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.ms-cat-icon-box {
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.rounded-10px {
+.ms-cat-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.ms-cat-amount-info {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.ms-cat-percent {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ms-cat-status-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: inline-block;
+  line-height: 1.5;
+}
+
+.ms-cat-status-badge.success {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.ms-cat-status-badge.warning {
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.ms-cat-status-badge.danger {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.ms-cat-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ms-cat-progress-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+
+/* Progress Bars with Increased Prominence */
+.ms-progress-blue .progress-bar {
+  background-color: #4f46e5 !important;
   border-radius: 10px;
 }
-
-.rounded-12px {
-  border-radius: 12px;
+.ms-progress-purple .progress-bar {
+  background-color: #8b5cf6 !important;
+  border-radius: 10px;
+}
+.ms-progress-orange .progress-bar {
+  background-color: #f59e0b !important;
+  border-radius: 10px;
+}
+.ms-progress-green .progress-bar {
+  background-color: #10b981 !important;
+  border-radius: 10px;
+}
+.progress {
+  background-color: #e2e8f0 !important;
+  border-radius: 10px !important;
 }
 
-.rounded-16px {
-  border-radius: 16px;
+/* Savings Goal Cards */
+.ms-goal-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
 }
 
-.rounded-20px {
+.ms-goal-card:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.ms-goal-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.ms-goal-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ms-goal-cat {
+  font-size: 10.5px;
+  color: #64748b;
+}
+
+.ms-goal-percent-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
   border-radius: 20px;
 }
 
-.rounded-24px {
-  border-radius: 24px;
+.ms-goal-track {
+  width: 100%;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 4px;
 }
 
+.ms-goal-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
 
-.max-w-520px{
-    max-width: 520px;
-    width: 100% ;
-    background: #fff;
+/* ==========================================================================
+   CLEAN 4-COLUMN RECENT TRANSACTIONS TABLE STYLING
+   ========================================================================== */
+.ms-clean-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.ms-clean-table thead th {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: transparent;
+  border-bottom: 1.5px solid #e2e8f0;
+  padding: 10px 8px;
+}
+
+.ms-clean-table tbody td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  background: transparent;
+}
+
+.ms-tx-item-row {
+  transition: background-color 0.15s ease;
+}
+
+.ms-tx-item-row:hover td {
+  background-color: #f8fafc;
+}
+
+.ms-tx-avatar-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ms-tx-main-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.ms-tx-desc-text {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.ms-authentic-amount {
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.ms-authentic-amount.income {
+  color: #059669;
+}
+
+.ms-authentic-amount.expense {
+  color: #0f172a;
+}
+
+.ms-view-all-link {
+  color: #4f46e5;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.ms-view-all-link:hover {
+  color: #4338ca;
+  text-decoration: underline;
+}
+
+/* Upcoming Payments */
+.ms-payment-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.ms-payment-item:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.ms-payment-date-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.ms-payment-date-badge .month {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #ef4444;
+  text-transform: uppercase;
+}
+
+.ms-payment-date-badge .day {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 1px;
+}
+
+/* Growth Graphic */
+.ms-growth-graphic {
+  position: relative;
+  width: 85px;
+  height: 50px;
+}
+
+.ms-growth-bars {
+  position: absolute;
+  bottom: 0;
+  left: 10px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 40px;
+}
+
+.ms-growth-bars .bar {
+  width: 5px;
+  background: #c7d2fe;
+  border-radius: 2px 2px 0 0;
+}
+.ms-growth-bars .bar.b1 { height: 14px; }
+.ms-growth-bars .bar.b2 { height: 22px; }
+.ms-growth-bars .bar.b3 { height: 30px; }
+.ms-growth-bars .bar.b4 { height: 38px; }
+
+.ms-growth-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
