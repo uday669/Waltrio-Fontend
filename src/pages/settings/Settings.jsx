@@ -23,7 +23,10 @@ import {
   FiSave,
   FiRefreshCw,
   FiEye,
+  FiEyeOff,
 } from "react-icons/fi";
+import Select from "react-select";
+import { formSelectStyles } from "../../utils/selectStyles";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -192,47 +195,67 @@ export default function Settings() {
                         <Col xs={12} md={6}>
                           <Form.Group className="mb-2">
                             <Form.Label className="ur-form-label">Default Base Currency</Form.Label>
-                            <Form.Select
-                              value={profile.currency}
-                              onChange={(e) => setProfile({ ...profile, currency: e.target.value })}
-                              className="ur-form-input"
-                            >
-                              <option value="INR">₹ INR (Indian Rupee)</option>
-                              <option value="USD">$ USD (US Dollar)</option>
-                              <option value="EUR">€ EUR (Euro)</option>
-                              <option value="GBP">£ GBP (British Pound)</option>
-                            </Form.Select>
+                            <Select
+                              value={[
+                                { value: "INR", label: "₹ INR (Indian Rupee)" },
+                                { value: "USD", label: "$ USD (US Dollar)" },
+                                { value: "EUR", label: "€ EUR (Euro)" },
+                                { value: "GBP", label: "£ GBP (British Pound)" },
+                              ].find((c) => c.value === profile.currency)}
+                              onChange={(opt) => setProfile({ ...profile, currency: opt.value })}
+                              options={[
+                                { value: "INR", label: "₹ INR (Indian Rupee)" },
+                                { value: "USD", label: "$ USD (US Dollar)" },
+                                { value: "EUR", label: "€ EUR (Euro)" },
+                                { value: "GBP", label: "£ GBP (British Pound)" },
+                              ]}
+                              styles={formSelectStyles}
+                              menuPortalTarget={document.body}
+                            />
                           </Form.Group>
                         </Col>
 
                         <Col xs={12} md={6}>
                           <Form.Group className="mb-2">
                             <Form.Label className="ur-form-label">Timezone</Form.Label>
-                            <Form.Select
-                              value={profile.timezone}
-                              onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
-                              className="ur-form-input"
-                            >
-                              <option value="Asia/Kolkata (IST +5:30)">Asia/Kolkata (IST +5:30)</option>
-                              <option value="America/New_York (EST)">America/New_York (EST -5:00)</option>
-                              <option value="Europe/London (GMT)">Europe/London (GMT +0:00)</option>
-                              <option value="Asia/Dubai (GST)">Asia/Dubai (GST +4:00)</option>
-                            </Form.Select>
+                            <Select
+                              value={[
+                                { value: "Asia/Kolkata (IST +5:30)", label: "Asia/Kolkata (IST +5:30)" },
+                                { value: "America/New_York (EST)", label: "America/New_York (EST -5:00)" },
+                                { value: "Europe/London (GMT)", label: "Europe/London (GMT +0:00)" },
+                                { value: "Asia/Dubai (GST)", label: "Asia/Dubai (GST +4:00)" },
+                              ].find((t) => t.value === profile.timezone)}
+                              onChange={(opt) => setProfile({ ...profile, timezone: opt.value })}
+                              options={[
+                                { value: "Asia/Kolkata (IST +5:30)", label: "Asia/Kolkata (IST +5:30)" },
+                                { value: "America/New_York (EST)", label: "America/New_York (EST -5:00)" },
+                                { value: "Europe/London (GMT)", label: "Europe/London (GMT +0:00)" },
+                                { value: "Asia/Dubai (GST)", label: "Asia/Dubai (GST +4:00)" },
+                              ]}
+                              styles={formSelectStyles}
+                              menuPortalTarget={document.body}
+                            />
                           </Form.Group>
                         </Col>
 
                         <Col xs={12} md={6}>
                           <Form.Group className="mb-2">
                             <Form.Label className="ur-form-label">Date Display Format</Form.Label>
-                            <Form.Select
-                              value={profile.dateFormat}
-                              onChange={(e) => setProfile({ ...profile, dateFormat: e.target.value })}
-                              className="ur-form-input"
-                            >
-                              <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 20/08/2026)</option>
-                              <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 08/20/2026)</option>
-                              <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-08-20)</option>
-                            </Form.Select>
+                            <Select
+                              value={[
+                                { value: "DD/MM/YYYY", label: "DD/MM/YYYY (e.g. 20/08/2026)" },
+                                { value: "MM/DD/YYYY", label: "MM/DD/YYYY (e.g. 08/20/2026)" },
+                                { value: "YYYY-MM-DD", label: "YYYY-MM-DD (e.g. 2026-08-20)" },
+                              ].find((d) => d.value === profile.dateFormat)}
+                              onChange={(opt) => setProfile({ ...profile, dateFormat: opt.value })}
+                              options={[
+                                { value: "DD/MM/YYYY", label: "DD/MM/YYYY (e.g. 20/08/2026)" },
+                                { value: "MM/DD/YYYY", label: "MM/DD/YYYY (e.g. 08/20/2026)" },
+                                { value: "YYYY-MM-DD", label: "YYYY-MM-DD (e.g. 2026-08-20)" },
+                              ]}
+                              styles={formSelectStyles}
+                              menuPortalTarget={document.body}
+                            />
                           </Form.Group>
                         </Col>
                       </Row>

@@ -28,6 +28,8 @@ import {
   FiBook,
   FiRefreshCw,
 } from "react-icons/fi";
+import Select from "react-select";
+import { formSelectStyles } from "../../utils/selectStyles";
 import CommonDataTable from "../../components/common/DataTable";
 
 // Initial Mock Dataset for Budgets
@@ -618,21 +620,33 @@ export default function Budgets() {
           <Modal.Body className="py-3">
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Expense Category *</Form.Label>
-              <Form.Select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="ur-form-input"
-              >
-                <option value="Food & Dining">Food &amp; Dining</option>
-                <option value="Housing & Rent">Housing &amp; Rent</option>
-                <option value="Transportation & Fuel">Transportation &amp; Fuel</option>
-                <option value="Shopping & Retail">Shopping &amp; Retail</option>
-                <option value="Utilities & Bills">Utilities &amp; Bills</option>
-                <option value="Fitness & Wellness">Fitness &amp; Wellness</option>
-                <option value="Entertainment">Entertainment</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Education">Education</option>
-              </Form.Select>
+              <Select
+                value={[
+                  { value: "Food & Dining", label: "Food & Dining" },
+                  { value: "Housing & Rent", label: "Housing & Rent" },
+                  { value: "Transportation & Fuel", label: "Transportation & Fuel" },
+                  { value: "Shopping & Retail", label: "Shopping & Retail" },
+                  { value: "Utilities & Bills", label: "Utilities & Bills" },
+                  { value: "Fitness & Wellness", label: "Fitness & Wellness" },
+                  { value: "Entertainment", label: "Entertainment" },
+                  { value: "Healthcare", label: "Healthcare" },
+                  { value: "Education", label: "Education" },
+                ].find((c) => c.value === formData.category)}
+                onChange={(opt) => setFormData({ ...formData, category: opt.value })}
+                options={[
+                  { value: "Food & Dining", label: "Food & Dining" },
+                  { value: "Housing & Rent", label: "Housing & Rent" },
+                  { value: "Transportation & Fuel", label: "Transportation & Fuel" },
+                  { value: "Shopping & Retail", label: "Shopping & Retail" },
+                  { value: "Utilities & Bills", label: "Utilities & Bills" },
+                  { value: "Fitness & Wellness", label: "Fitness & Wellness" },
+                  { value: "Entertainment", label: "Entertainment" },
+                  { value: "Healthcare", label: "Healthcare" },
+                  { value: "Education", label: "Education" },
+                ]}
+                styles={formSelectStyles}
+                menuPortalTarget={document.body}
+              />
             </Form.Group>
 
             <Form.Group className="mb-2">
@@ -652,30 +666,42 @@ export default function Budgets() {
               <Col xs={6}>
                 <Form.Group>
                   <Form.Label className="ur-form-label">Cycle Period</Form.Label>
-                  <Form.Select
-                    value={formData.period}
-                    onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="Monthly">Monthly</option>
-                    <option value="Quarterly">Quarterly</option>
-                    <option value="Yearly">Yearly</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "Monthly", label: "Monthly" },
+                      { value: "Quarterly", label: "Quarterly" },
+                      { value: "Yearly", label: "Yearly" },
+                    ].find((p) => p.value === formData.period)}
+                    onChange={(opt) => setFormData({ ...formData, period: opt.value })}
+                    options={[
+                      { value: "Monthly", label: "Monthly" },
+                      { value: "Quarterly", label: "Quarterly" },
+                      { value: "Yearly", label: "Yearly" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
 
               <Col xs={6}>
                 <Form.Group>
                   <Form.Label className="ur-form-label">Alert Threshold (%)</Form.Label>
-                  <Form.Select
-                    value={formData.alertThreshold}
-                    onChange={(e) => setFormData({ ...formData, alertThreshold: e.target.value })}
-                    className="ur-form-input"
-                  >
-                    <option value="70">At 70% used</option>
-                    <option value="80">At 80% used</option>
-                    <option value="90">At 90% used</option>
-                  </Form.Select>
+                  <Select
+                    value={[
+                      { value: "70", label: "At 70% used" },
+                      { value: "80", label: "At 80% used" },
+                      { value: "90", label: "At 90% used" },
+                    ].find((t) => t.value === formData.alertThreshold)}
+                    onChange={(opt) => setFormData({ ...formData, alertThreshold: opt.value })}
+                    options={[
+                      { value: "70", label: "At 70% used" },
+                      { value: "80", label: "At 80% used" },
+                      { value: "90", label: "At 90% used" },
+                    ]}
+                    styles={formSelectStyles}
+                    menuPortalTarget={document.body}
+                  />
                 </Form.Group>
               </Col>
             </Row>

@@ -11,6 +11,7 @@ import Transactions from '../pages/transactions/Transactions';
 import GroupsSplit from '../pages/split/GroupsSplit';
 import EmiLoans from '../pages/emi/EmiLoans';
 import Budgets from '../pages/budgets/Budgets';
+import SavingsGoals from '../pages/goals/SavingsGoals';
 import Settings from '../pages/settings/Settings';
 import Calendar from '../pages/calendar/Calendar';
 import Reports from '../pages/reports/Reports';
@@ -34,6 +35,7 @@ export default function Routing() {
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/budgets" element={<Budgets />} />
+        <Route path="/goals" element={<SavingsGoals />} />
         <Route path="/split" element={<GroupsSplit />} />
         <Route path="/emi" element={<EmiLoans />} />
         {/* <Route path="/calendar" element={<Calendar />} /> */}
