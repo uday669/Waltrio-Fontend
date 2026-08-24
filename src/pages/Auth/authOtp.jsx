@@ -84,7 +84,7 @@ export default function AuthOtp() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      navigate("/dashboard");
+      navigate("/onboarding");
     }, 600);
   };
 
