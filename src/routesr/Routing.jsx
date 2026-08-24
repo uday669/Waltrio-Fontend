@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../pages/Auth/login';
 import Register from '../pages/Auth/registra';
 import AuthOtp from '../pages/Auth/authOtp';
+import Onboarding from '../pages/Auth/onboarding';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/dashboard/dashboard';
 import Income from '../pages/income/Income';
@@ -27,6 +28,7 @@ export default function Routing() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/otp" element={<AuthOtp />} />
+      <Route path="/onboarding" element={<Onboarding />} />
 
       {/* Protected / Dashboard Layout Routes */}
       <Route element={<MainLayout />}>
