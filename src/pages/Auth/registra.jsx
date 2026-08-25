@@ -4,6 +4,8 @@ import Col from "react-bootstrap/Col";
 import { Link, useNavigate } from "react-router-dom";
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
 import Auth from "../../components/auth";
+import { useRegister } from "../../hooks/useAuth";
+import { toast } from "../../lib/toast";
 import '../../assets/css/style.css';
 import '../../assets/css/responsive.css';
 
@@ -18,8 +20,20 @@ export default function Register() {
     confirmPassword: "",
     agreeTerms: false,
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const { mutate: register, isPending: loading } = useRegister({
+    onSuccess: () => {
+      // Backend has sent an OTP — move to verification with the email in state.
+      toast.success("Account created! We sent a verification code to your email.");
+      navigate("/otp", { state: { email: formData.email, from: "register" } });
+    },
+    onError: (err) => {
+      const message = err.message || "Registration failed. Please try again.";
+      setError(message);
+      toast.error(message);
+    },
+  });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -53,11 +67,13 @@ export default function Register() {
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/otp", { state: { email: formData.email } });
-    }, 600);
+    setError("");
+    register({
+      name: formData.fullName,
+      email: formData.email,
+      password: formData.password,
+      agreeWaltrio: formData.agreeTerms,
+    });
   };
 
   return (

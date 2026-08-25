@@ -1,22 +1,43 @@
 import React, { useState } from "react";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
-import { Link, useNavigate } from "react-router-dom";
-import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import Auth from "../../components/auth";
+import { useLogin } from "../../hooks/useAuth";
+import { toast } from "../../lib/toast";
 import '../../assets/css/style.css';
 import '../../assets/css/responsive.css';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const verified = location.state?.verified;
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: "",
+    email: location.state?.email || "",
     password: "",
     rememberMe: false,
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const { mutate: login, isPending: loading } = useLogin({
+    onSuccess: () => {
+      toast.success("Welcome back! Signing you in.");
+      navigate("/dashboard");
+    },
+    onError: (err) => {
+      // If the account exists but isn't verified, send them to OTP.
+      if (err.status === 403) {
+        toast.info("Please verify your email to continue.");
+        navigate("/otp", { state: { email: formData.email, from: "login" } });
+        return;
+      }
+      const message = err.message || "Sign in failed. Please check your credentials.";
+      setError(message);
+      toast.error(message);
+    },
+  });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -34,11 +55,8 @@ export default function Login() {
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/dashboard");
-    }, 600);
+    setError("");
+    login({ email: formData.email, password: formData.password });
   };
 
   return (
@@ -50,6 +68,13 @@ export default function Login() {
             Sign in to continue to your Waltrio account
           </p>
         </div>
+
+        {verified && !error && (
+          <div className="d-flex align-items-center gap-2 p-2 px-3 rounded-3 bg-success-subtle text-success fs-13px mb-3">
+            <FiCheckCircle size={16} />
+            <span>Email verified! Please sign in to continue.</span>
+          </div>
+        )}
 
         {error && (
           <div className="auth-alert-error mb-3">

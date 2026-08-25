@@ -4,23 +4,60 @@ import Col from "react-bootstrap/Col";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FiCheckCircle, FiRefreshCw, FiArrowLeft, FiShield } from "react-icons/fi";
 import Auth from "../../components/auth";
+import { useVerifyOtp, useResendOtp } from "../../hooks/useAuth";
+import { toast } from "../../lib/toast";
 import '../../assets/css/style.css';
 import '../../assets/css/responsive.css';
 
+// Backend throttles resend to once every 5 minutes.
+const RESEND_SECONDS = 5 * 60;
+// Number of digits in the OTP code.
+const OTP_LENGTH = 4;
+const EMPTY_OTP = Array(OTP_LENGTH).fill("");
 
 export default function AuthOtp() {
   const location = useLocation();
   const navigate = useNavigate();
-  const email = location.state?.email || "your email address";
+  const email = location.state?.email || "";
 
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [timer, setTimer] = useState(60);
+  const [otp, setOtp] = useState(EMPTY_OTP);
+  const [timer, setTimer] = useState(RESEND_SECONDS);
   const [canResend, setCanResend] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendSuccess, setResendSuccess] = useState(false);
 
   const inputRefs = useRef([]);
+
+  const { mutate: verify, isPending: loading } = useVerifyOtp({
+    onSuccess: () => {
+      // Email verified — send the user to sign in.
+      toast.success("Email verified successfully!");
+      navigate("/login", { state: { verified: true, email } });
+    },
+    onError: (err) => {
+      const message = err.message || "Invalid or expired code. Please try again.";
+      setError(message);
+      toast.error(message);
+    },
+  });
+
+  const { mutate: resend, isPending: resending } = useResendOtp({
+    onSuccess: () => {
+      setOtp(EMPTY_OTP);
+      setTimer(RESEND_SECONDS);
+      setCanResend(false);
+      setResendSuccess(true);
+      setError("");
+      inputRefs.current[0]?.focus();
+      toast.success("A new code has been sent to your email.");
+      setTimeout(() => setResendSuccess(false), 4000);
+    },
+    onError: (err) => {
+      const message = err.message || "Could not resend the code. Please try again.";
+      setError(message);
+      toast.error(message);
+    },
+  });
 
   useEffect(() => {
     let interval = null;
@@ -45,7 +82,7 @@ export default function AuthOtp() {
     setOtp(newOtp);
     if (error) setError("");
 
-    if (value && index < 5) {
+    if (value && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -57,7 +94,7 @@ export default function AuthOtp() {
       }
     } else if (e.key === "ArrowLeft" && index > 0) {
       inputRefs.current[index - 1]?.focus();
-    } else if (e.key === "ArrowRight" && index < 5) {
+    } else if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -65,10 +102,10 @@ export default function AuthOtp() {
   const handlePaste = (e) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").trim();
-    if (/^\d{6}$/.test(pastedData)) {
+    if (new RegExp(`^\\d{${OTP_LENGTH}}$`).test(pastedData)) {
       const digits = pastedData.split("");
       setOtp(digits);
-      inputRefs.current[5]?.focus();
+      inputRefs.current[OTP_LENGTH - 1]?.focus();
       if (error) setError("");
     }
   };
@@ -76,27 +113,26 @@ export default function AuthOtp() {
   const handleVerify = (e) => {
     e.preventDefault();
     const enteredCode = otp.join("");
-    if (enteredCode.length < 6) {
-      setError("Please enter all 6 digits of your verification code.");
+    if (enteredCode.length < OTP_LENGTH) {
+      setError(`Please enter all ${OTP_LENGTH} digits of your verification code.`);
+      return;
+    }
+    if (!email) {
+      setError("Missing email. Please start the sign-up again.");
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/dashboard");
-    }, 600);
+    setError("");
+    verify({ email, otp: enteredCode });
   };
 
   const handleResend = () => {
-    if (!canResend) return;
-    setOtp(["", "", "", "", "", ""]);
-    setTimer(60);
-    setCanResend(false);
-    setResendSuccess(true);
-    setError("");
-    inputRefs.current[0]?.focus();
-    setTimeout(() => setResendSuccess(false), 4000);
+    if (!canResend || resending) return;
+    if (!email) {
+      setError("Missing email. Please start the sign-up again.");
+      return;
+    }
+    resend({ email });
   };
 
   return (
@@ -108,7 +144,7 @@ export default function AuthOtp() {
           </div>
           <h2 className="auth-title">Verify Your Email ✉️</h2>
           <p className="auth-subtitle">
-            Enter the 6-digit code sent to <strong className="text-dark">{email}</strong>
+            Enter the {OTP_LENGTH}-digit code sent to <strong className="text-dark">{email || "your email address"}</strong>
           </p>
         </div>
 
@@ -121,7 +157,7 @@ export default function AuthOtp() {
         {resendSuccess && (
           <div className="d-flex align-items-center gap-2 p-2 px-3 rounded-3 bg-success-subtle text-success fs-13px mb-3">
             <FiCheckCircle size={16} />
-            <span>A new 6-digit OTP code has been sent to your email!</span>
+            <span>A new {OTP_LENGTH}-digit OTP code has been sent to your email!</span>
           </div>
         )}
 
@@ -159,13 +195,17 @@ export default function AuthOtp() {
                     type="button"
                     onClick={handleResend}
                     className="btn-resend-otp"
+                    disabled={resending}
                   >
                     <FiRefreshCw size={14} />
-                    <span>Resend Code</span>
+                    <span>{resending ? "Sending..." : "Resend Code"}</span>
                   </button>
                 ) : (
                   <div className="d-inline-flex align-items-center gap-1 ur-text-theme fw-600">
-                    <span>Resend in 00:{timer < 10 ? `0${timer}` : timer}</span>
+                    <span>
+                      Resend in {String(Math.floor(timer / 60)).padStart(2, "0")}:
+                      {String(timer % 60).padStart(2, "0")}
+                    </span>
                   </div>
                 )}
               </div>

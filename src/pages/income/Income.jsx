@@ -36,160 +36,17 @@ import { BsBank2 } from "react-icons/bs";
 import { IoWalletOutline } from "react-icons/io5";
 import { SiGooglepay, SiPhonepe } from "react-icons/si";
 import CommonDataTable from "../../components/common/DataTable";
-
-// Initial Mock Dataset for Incomes
-const INITIAL_INCOME_DATA = [
-  {
-    id: "INC-8091",
-    source: "TechCorp India Pvt Ltd",
-    description: "August Monthly Base Salary + Performance Bonus",
-    category: "Salary",
-    account: "HDFC Bank •••• 4091",
-    accountType: "Bank Transfer",
-    date: "2026-08-20",
-    time: "10:00 AM",
-    amount: 65000,
-    status: "Received",
-    isRecurring: true,
-    referenceNo: "NEFT-HDFC-99120412",
-    notes: "Credited automatically on 20th of every month",
-  },
-  {
-    id: "INC-8090",
-    source: "Apex SaaS Freelance Design",
-    description: "Milestone 2 - Design System & Component Library",
-    category: "Freelance",
-    account: "ICICI Bank •••• 9821",
-    accountType: "Direct Deposit",
-    date: "2026-08-18",
-    time: "03:45 PM",
-    amount: 28000,
-    status: "Received",
-    isRecurring: false,
-    referenceNo: "UPI-ICICI-882190",
-    notes: "UI/UX wireframes & design kit delivery accepted",
-  },
-  {
-    id: "INC-8089",
-    source: "Apartment 4B Rental Yield",
-    description: "Monthly Rental Inflow - DLF Greens Tenant",
-    category: "Rental",
-    account: "HDFC Bank •••• 4091",
-    accountType: "GPay UPI",
-    date: "2026-08-15",
-    time: "11:30 AM",
-    amount: 18000,
-    status: "Received",
-    isRecurring: true,
-    referenceNo: "GPAY-90218-441",
-    notes: "Tenant paid on schedule",
-  },
-  {
-    id: "INC-8088",
-    source: "TCS & Infosys Dividends",
-    description: "Q2 FY27 Quarterly Equity Stock Dividends",
-    category: "Dividends",
-    account: "Zerodha Trading A/C",
-    accountType: "Demag Dividend",
-    date: "2026-08-12",
-    time: "09:15 AM",
-    amount: 4500,
-    status: "Received",
-    isRecurring: false,
-    referenceNo: "DIV-NSE-881920",
-    notes: "Direct dividend payout credited to ledger",
-  },
-  {
-    id: "INC-8087",
-    source: "Fintech Advisory Consultation",
-    description: "Architecture review consultation (3 hours session)",
-    category: "Consulting",
-    account: "PhonePe UPI",
-    accountType: "PhonePe UPI",
-    date: "2026-08-10",
-    time: "05:20 PM",
-    amount: 12500,
-    status: "Received",
-    isRecurring: false,
-    referenceNo: "UPI-PHON-77821",
-    notes: "Consulting invoice #FIN-2026-09",
-  },
-  {
-    id: "INC-8086",
-    source: "SBI Fixed Deposit Interest",
-    description: "Quarterly cumulative FD interest payout",
-    category: "Investments",
-    account: "SBI Bank •••• 1109",
-    accountType: "Bank Interest",
-    date: "2026-08-05",
-    time: "12:00 PM",
-    amount: 3800,
-    status: "Received",
-    isRecurring: true,
-    referenceNo: "INT-SBI-00129",
-    notes: "Automated quarterly reinvestment interest",
-  },
-  {
-    id: "INC-8085",
-    source: "YouTube Partner Program",
-    description: "AdSense Creator Revenue - July Monetization",
-    category: "Digital Products",
-    account: "HDFC Bank •••• 4091",
-    accountType: "Wire Transfer",
-    date: "2026-08-02",
-    time: "08:40 AM",
-    amount: 8200,
-    status: "Received",
-    isRecurring: true,
-    referenceNo: "GOOGLE-ADS-991",
-    notes: "Google Ireland wire payout",
-  },
-  {
-    id: "INC-8084",
-    source: "Annual Performance Bonus",
-    description: "Mid-Year Appraisal Performance Incentive",
-    category: "Bonus",
-    account: "HDFC Bank •••• 4091",
-    accountType: "Bank Transfer",
-    date: "2026-07-28",
-    time: "10:30 AM",
-    amount: 35000,
-    status: "Received",
-    isRecurring: false,
-    referenceNo: "BONUS-CORP-4019",
-    notes: "Approved by leadership committee",
-  },
-  {
-    id: "INC-8083",
-    source: "Brand Sponsorship - DevKit",
-    description: "Newsletter sponsorship shoutout & review",
-    category: "Freelance",
-    account: "ICICI Bank •••• 9821",
-    accountType: "Direct Deposit",
-    date: "2026-07-20",
-    time: "02:10 PM",
-    amount: 15000,
-    status: "Received",
-    isRecurring: false,
-    referenceNo: "SPON-DEV-08",
-    notes: "Delivered video segment and newsletter sponsor slot",
-  },
-  {
-    id: "INC-8082",
-    source: "Upcoming Contract Retainer",
-    description: "Monthly maintenance retainer for cloud infra",
-    category: "Consulting",
-    account: "HDFC Bank •••• 4091",
-    accountType: "Bank Transfer",
-    date: "2026-08-28",
-    time: "11:00 AM",
-    amount: 22000,
-    status: "Pending",
-    isRecurring: true,
-    referenceNo: "INV-RET-2026",
-    notes: "Expected credit by end of month",
-  },
-];
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useIncomes,
+  useIncomeSummary,
+  useIncomeAnalytics,
+  useCreateIncome,
+  useUpdateIncome,
+  useDeleteIncome,
+} from "../../hooks/useIncomes";
+import { deleteIncome } from "../../api/incomes.api";
+import { toast } from "../../lib/toast";
 
 // Available Categories with icons & theme colors
 const CATEGORIES = [
@@ -205,10 +62,61 @@ const CATEGORIES = [
 ];
 
 export default function Income() {
-  const [incomes, setIncomes] = useState(INITIAL_INCOME_DATA);
+  const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("monthly");
+
+  // ---- Server data (TanStack Query) -------------------------------------
+  // GET /incomes — full list (server-side filters passed as params).
+  const {
+    data: incomesData,
+    isLoading: incomesLoading,
+    isError: incomesIsError,
+    error: incomesErr,
+  } = useIncomes({ category: selectedCategory, status: selectedStatus });
+
+  // Surface a real API/auth failure instead of a silent empty table.
+  React.useEffect(() => {
+    if (incomesIsError) {
+      console.error("[incomes] request failed:", incomesErr);
+      toast.error(incomesErr?.message || "Could not load incomes.");
+    }
+  }, [incomesIsError, incomesErr]);
+
+  // Only ever show real API data (empty array while loading / when none).
+  const incomes = useMemo(() => incomesData || [], [incomesData]);
+
+  // GET /incomes/summary — the 4 metric cards.
+  const { data: summaryData } = useIncomeSummary();
+
+  // GET /incomes/analytics — data for the two charts.
+  const { data: analyticsData } = useIncomeAnalytics({ range: timeRange });
+
+  // ---- Mutations --------------------------------------------------------
+  const { mutate: createIncomeMut, isPending: creating } = useCreateIncome({
+    onSuccess: () => {
+      toast.success("Income added successfully.");
+      setShowAddModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not add income."),
+  });
+
+  const { mutate: updateIncomeMut, isPending: updating } = useUpdateIncome({
+    onSuccess: () => {
+      toast.success("Income updated successfully.");
+      setShowEditModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not update income."),
+  });
+
+  const { mutate: deleteIncomeMut } = useDeleteIncome({
+    onSuccess: () => {
+      toast.success("Income deleted.");
+      setShowDeleteModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not delete income."),
+  });
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -254,23 +162,26 @@ export default function Income() {
     }
   };
 
-  // Calculate Metrics
+  // Calculate Metrics from the real income records.
   const metrics = useMemo(() => {
     const total = incomes.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-    const received = incomes
-      .filter((i) => i.status === "Received")
-      .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-    const recurring = incomes
-      .filter((i) => i.isRecurring)
-      .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     const avg = incomes.length > 0 ? Math.round(total / incomes.length) : 0;
 
-    // Find top source category
+    // Sum of income dated in the current calendar month.
+    const now = new Date();
+    const thisMonth = incomes
+      .filter((i) => {
+        const d = new Date(i.date);
+        return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
+      .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+    // Find top category by total amount.
     const catMap = {};
     incomes.forEach((i) => {
       catMap[i.category] = (catMap[i.category] || 0) + Number(i.amount);
     });
-    let topCat = "Salary";
+    let topCat = "—";
     let maxVal = 0;
     Object.entries(catMap).forEach(([cat, val]) => {
       if (val > maxVal) {
@@ -279,8 +190,28 @@ export default function Income() {
       }
     });
 
-    return { total, received, recurring, avg, topCat, maxVal };
+    return { total, thisMonth, avg, topCat, maxVal };
   }, [incomes]);
+
+  // Prefer server summary (GET /incomes/summary); fall back to computed metrics.
+  const s = summaryData || {};
+  const thisMonth = Number(s.thisMonth ?? s.monthlyInflow ?? s.currentMonth ?? metrics.thisMonth);
+  const total = Number(s.totalInflow ?? s.total ?? s.totalIncome ?? metrics.total);
+  const recurringInflow = Number(s.recurringInflow ?? s.recurring ?? thisMonth);
+  const cards = {
+    total,
+    thisMonth,
+    recurringInflow,
+    // Prefer server-provided percentage; else compute recurring share of total.
+    recurringPercentage: Number(
+      s.recurringPercentage ?? Math.round((recurringInflow / (total || 1)) * 100)
+    ),
+    avg: Number(s.averageIncome ?? s.average ?? s.avg ?? metrics.avg),
+    topCat:
+      s.topStream?.name ?? s.topCategory ?? (typeof s.topStream === "string" ? s.topStream : null) ?? metrics.topCat,
+    maxVal: Number(s.topStream?.amount ?? s.topAmount ?? s.maxVal ?? metrics.maxVal),
+    count: Number(s.count ?? s.totalRecords ?? incomes.length),
+  };
 
   // Filtered dataset for table
   const tableData = useMemo(() => {
@@ -290,6 +221,105 @@ export default function Income() {
       return matchCat && matchStatus;
     });
   }, [incomes, selectedCategory, selectedStatus]);
+
+  // ---- Chart data -------------------------------------------------------
+  // Use GET /incomes/analytics when it returns a shape we recognize;
+  // otherwise compute the charts from the REAL income list. Never dummy data.
+  const DONUT_COLORS = ["#10b981", "#6366f1", "#06b6d4", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6", "#e11d48"];
+
+  const { trendCategories, trendData, donutItems } = useMemo(() => {
+    const analytics = analyticsData || {};
+
+    // --- Trend line ---
+    let tCats = [];
+    let tData = [];
+    const trendRaw =
+      analytics.trend ?? analytics.inflow ?? analytics.monthly ?? analytics.velocity ?? null;
+    if (Array.isArray(trendRaw) && trendRaw.length) {
+      tCats = trendRaw.map((p) => p.label ?? p.month ?? p.name ?? "");
+      tData = trendRaw.map((p) => Number(p.amount ?? p.value ?? p.total ?? 0));
+    } else if (trendRaw && Array.isArray(trendRaw.labels) && Array.isArray(trendRaw.data)) {
+      tCats = trendRaw.labels;
+      tData = trendRaw.data.map(Number);
+    } else if (incomes.length) {
+      const now = new Date();
+      if (timeRange === "quarterly") {
+        // Bucket by quarter; render the last 4 quarters.
+        const byQ = {};
+        incomes.forEach((i) => {
+          const d = new Date(i.date);
+          if (isNaN(d)) return;
+          const key = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+          byQ[key] = (byQ[key] || 0) + (Number(i.amount) || 0);
+        });
+        for (let k = 3; k >= 0; k--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - k * 3, 1);
+          const q = Math.floor(d.getMonth() / 3) + 1;
+          const key = `${d.getFullYear()}-Q${q}`;
+          tCats.push(`Q${q} ${String(d.getFullYear()).slice(2)}`);
+          tData.push(byQ[key] || 0);
+        }
+      } else {
+        // Bucket by month; render the last 6 months (empty months as 0).
+        const byMonth = {};
+        incomes.forEach((i) => {
+          const d = new Date(i.date);
+          if (isNaN(d)) return;
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          byMonth[key] = (byMonth[key] || 0) + (Number(i.amount) || 0);
+        });
+        for (let k = 5; k >= 0; k--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          tCats.push(d.toLocaleString("en-US", { month: "short" }));
+          tData.push(byMonth[key] || 0);
+        }
+      }
+    }
+
+    // --- Category donut ---
+    let dItems = [];
+    const donutRaw =
+      analytics.byCategory ?? analytics.categoryShare ?? analytics.sources ?? analytics.breakdown ?? null;
+    if (Array.isArray(donutRaw) && donutRaw.length) {
+      const raw = donutRaw.map((item) => ({
+        name: item.name ?? item.label ?? item.category ?? "Other",
+        value: Number(item.value ?? item.percent ?? item.amount ?? 0),
+        color: item.color,
+      }));
+      // If values are absolute amounts (not %), convert to percentages.
+      const sum = raw.reduce((a, b) => a + b.value, 0);
+      const asPct = sum > 100 || sum === 0;
+      dItems = raw.map((it, i) => ({
+        name: it.name,
+        value: asPct && sum ? Math.round((it.value / sum) * 100) : Math.round(it.value),
+        color: it.color ?? DONUT_COLORS[i % DONUT_COLORS.length],
+      }));
+    } else if (incomes.length) {
+      // Compute category share from real records.
+      const catMap = {};
+      incomes.forEach((i) => {
+        catMap[i.category || "Other"] = (catMap[i.category || "Other"] || 0) + (Number(i.amount) || 0);
+      });
+      const total = Object.values(catMap).reduce((a, b) => a + b, 0) || 1;
+      dItems = Object.entries(catMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, amount], i) => {
+          const cat = CATEGORIES.find((c) => c.value === name);
+          return {
+            name,
+            value: Math.round((amount / total) * 100),
+            color: cat?.color ?? DONUT_COLORS[i % DONUT_COLORS.length],
+          };
+        });
+    }
+
+    return { trendCategories: tCats, trendData: tData, donutItems: dItems };
+  }, [analyticsData, incomes, timeRange]);
+
+  const donutLabels = donutItems.map((d) => d.name);
+  const donutSeries = donutItems.map((d) => d.value);
+  const donutColors = donutItems.map((d) => d.color);
 
   // ApexChart: Income Trends Spline Area
   const trendChartOptions = {
@@ -317,15 +347,32 @@ export default function Income() {
     },
     colors: ["#10b981"],
     dataLabels: { enabled: false },
+    // Markers make a single / sparse data point visible.
+    markers: {
+      size: trendData.length <= 2 ? 5 : 0,
+      colors: ["#10b981"],
+      strokeColors: "#ffffff",
+      strokeWidth: 2,
+      hover: { size: 6 },
+    },
     xaxis: {
-      categories: ["Apr", "May", "Jun", "Jul", "Aug (Curr)", "Sep (Proj)"],
+      categories: trendCategories,
       labels: { style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 } },
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
     yaxis: {
+      min: 0,
+      forceNiceScale: true,
+      tickAmount: 4,
       labels: {
-        formatter: (val) => `₹${val / 1000}k`,
+        formatter: (val) => {
+          if (val >= 1000) {
+            const k = val / 1000;
+            return `₹${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+          }
+          return `₹${Math.round(val)}`;
+        },
         style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 },
       },
     },
@@ -343,15 +390,15 @@ export default function Income() {
   const trendChartSeries = [
     {
       name: "Income Stream",
-      data: [95000, 110000, 125000, 138000, metrics.total, 160000],
+      data: trendData,
     },
   ];
 
   // ApexChart: Income by Source Donut
   const donutOptions = {
     chart: { type: "donut", height: 210, fontFamily: "inherit" },
-    labels: ["Salary", "Freelance", "Rental", "Consulting", "Dividends & Other"],
-    colors: ["#10b981", "#6366f1", "#06b6d4", "#f59e0b", "#8b5cf6"],
+    labels: donutLabels,
+    colors: donutColors,
     dataLabels: {
       enabled: true,
       formatter: (val) => `${Math.round(val)}%`,
@@ -366,8 +413,6 @@ export default function Income() {
       y: { formatter: (val) => `${val}%` },
     },
   };
-
-  const donutSeries = [52, 22, 14, 8, 4];
 
   // Open Add Modal
   const handleOpenAdd = () => {
@@ -387,19 +432,26 @@ export default function Income() {
     setShowAddModal(true);
   };
 
-  // Submit Add Form
+  // Build the API payload from the form (drops the local-only preview fields).
+  const buildPayload = () => {
+    // Exact body the API expects for create (POST) and update (PUT).
+    return {
+      incomeSource: formData.source,
+      category: formData.category,
+      amount: Number(formData.amount),
+      date: formData.date,
+      description: formData.description,
+    };
+  };
+
+  // Submit Add Form -> POST /incomes
   const handleSaveAdd = (e) => {
     e.preventDefault();
-    if (!formData.source || !formData.amount) return;
-
-    const newEntry = {
-      id: `INC-${Math.floor(8100 + Math.random() * 900)}`,
-      ...formData,
-      amount: Number(formData.amount),
-    };
-
-    setIncomes([newEntry, ...incomes]);
-    setShowAddModal(false);
+    if (!formData.source || !formData.amount) {
+      toast.error("Source and amount are required.");
+      return;
+    }
+    createIncomeMut(buildPayload());
   };
 
   // Open Edit Modal
@@ -411,7 +463,7 @@ export default function Income() {
       category: item.category,
       account: item.account,
       amount: item.amount,
-      date: item.date,
+      date: item.date ? String(item.date).slice(0, 10) : "",
       time: item.time,
       status: item.status,
       isRecurring: item.isRecurring,
@@ -421,19 +473,11 @@ export default function Income() {
     setShowEditModal(true);
   };
 
-  // Submit Edit Form
+  // Submit Edit Form -> PUT /incomes/:id
   const handleSaveEdit = (e) => {
     e.preventDefault();
     if (!activeIncome) return;
-
-    setIncomes(
-      incomes.map((item) =>
-        item.id === activeIncome.id
-          ? { ...item, ...formData, amount: Number(formData.amount) }
-          : item
-      )
-    );
-    setShowEditModal(false);
+    updateIncomeMut({ id: activeIncome.id, ...buildPayload() });
   };
 
   // Open Delete Modal
@@ -442,17 +486,23 @@ export default function Income() {
     setShowDeleteModal(true);
   };
 
-  // Confirm Delete
+  // Confirm Delete -> DELETE /incomes/:id
   const handleConfirmDelete = () => {
     if (!activeIncome) return;
-    setIncomes(incomes.filter((i) => i.id !== activeIncome.id));
-    setShowDeleteModal(false);
+    deleteIncomeMut(activeIncome.id);
   };
 
-  // Bulk Delete
-  const handleBulkDelete = (ids) => {
-    const idSet = new Set(ids);
-    setIncomes(incomes.filter((i) => !idSet.has(i.id)));
+  // Bulk Delete -> DELETE /incomes/:id for each selected row
+  const handleBulkDelete = async (ids) => {
+    if (!ids?.length) return;
+    try {
+      await Promise.all(ids.map((id) => deleteIncome(id)));
+      toast.success(`${ids.length} income record(s) deleted.`);
+    } catch (err) {
+      toast.error(err.message || "Some records could not be deleted.");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+    }
   };
 
   // View Details
@@ -654,7 +704,7 @@ export default function Income() {
                 <div>
                   <div className="ms-stat-title">Total Inflow (Month)</div>
                   <div className="ms-stat-val text-success">
-                    ₹{metrics.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    ₹{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#ecfdf5" }}>
@@ -678,7 +728,7 @@ export default function Income() {
                 <div>
                   <div className="ms-stat-title">Recurring Inflow</div>
                   <div className="ms-stat-val">
-                    ₹{metrics.recurring.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    ₹{cards.recurringInflow.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#eef2ff" }}>
@@ -687,9 +737,9 @@ export default function Income() {
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-primary fw-700 fs-11px">
-                  {Math.round((metrics.recurring / (metrics.total || 1)) * 100)}% of total
+                  {cards.recurringPercentage}% of total
                 </span>
-                <span className="ms-stat-sub-text">Salary &amp; Rentals</span>
+                <span className="ms-stat-sub-text">Salary & Rentals</span>
               </div>
             </Card.Body>
           </Card>
@@ -702,7 +752,7 @@ export default function Income() {
                 <div>
                   <div className="ms-stat-title">Average Income / Entry</div>
                   <div className="ms-stat-val">
-                    ₹{metrics.avg.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    ₹{cards.avg.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#f5f3ff" }}>
@@ -713,7 +763,7 @@ export default function Income() {
                 <span className="ms-trend-pill positive">
                   <FiTrendingUp size={11} /> +6.4%
                 </span>
-                <span className="ms-stat-sub-text">Across {incomes.length} records</span>
+                <span className="ms-stat-sub-text">Across {cards.count} records</span>
               </div>
             </Card.Body>
           </Card>
@@ -726,7 +776,7 @@ export default function Income() {
                 <div>
                   <div className="ms-stat-title">Top Revenue Stream</div>
                   <div className="ms-stat-val fs-18px text-truncate" style={{ maxWidth: "160px" }}>
-                    {metrics.topCat}
+                    {cards.topCat}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#ecfeff" }}>
@@ -735,7 +785,7 @@ export default function Income() {
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-dark fw-700 fs-11px">
-                  ₹{metrics.maxVal.toLocaleString("en-IN")}
+                  ₹{cards.maxVal.toLocaleString("en-IN")}
                 </span>
                 <span className="ms-stat-sub-text">Primary Source</span>
               </div>
@@ -755,7 +805,9 @@ export default function Income() {
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <div>
                   <h5 className="ms-card-title mb-0">Income Inflow Velocity</h5>
-                  <p className="text-muted fs-11px mb-0">6-Month progression &amp; projected growth</p>
+                  <p className="text-muted fs-11px mb-0">
+                    {timeRange === "quarterly" ? "Last 4 quarters progression" : "6-Month progression & projected growth"}
+                  </p>
                 </div>
                 <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-6px">
                   <Button
@@ -778,7 +830,13 @@ export default function Income() {
               </div>
 
               <div className="ms-chart-wrap pt-1">
-                <Chart options={trendChartOptions} series={trendChartSeries} type="area" height={220} />
+                {trendData.length ? (
+                  <Chart options={trendChartOptions} series={trendChartSeries} type="area" height={220} />
+                ) : (
+                  <div className="d-flex align-items-center justify-content-center text-muted fs-12px" style={{ height: 220 }}>
+                    No income data to chart yet.
+                  </div>
+                )}
               </div>
             </Card.Body>
           </Card>
@@ -793,29 +851,29 @@ export default function Income() {
                 <p className="text-muted fs-11px mb-0">Portfolio distribution</p>
               </div>
 
-              <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
-                <div style={{ width: "180px", height: "200px" }}>
-                  <Chart options={donutOptions} series={donutSeries} type="donut" height={200} />
-                </div>
+              {donutSeries.length ? (
+                <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
+                  <div style={{ width: "180px", height: "200px" }}>
+                    <Chart options={donutOptions} series={donutSeries} type="donut" height={200} />
+                  </div>
 
-                <div className="ms-donut-legend ps-2" style={{ minWidth: "150px" }}>
-                  {[
-                    { name: "Salary", pct: "52%", clr: "#10b981" },
-                    { name: "Freelance", pct: "22%", clr: "#6366f1" },
-                    { name: "Rental", pct: "14%", clr: "#06b6d4" },
-                    { name: "Consulting", pct: "8%", clr: "#f59e0b" },
-                    { name: "Dividends", pct: "4%", clr: "#8b5cf6" },
-                  ].map((item, i) => (
-                    <div key={i} className="d-flex align-items-center justify-content-between mb-1 fs-11px">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="ms-legend-dot" style={{ backgroundColor: item.clr }}></span>
-                        <span className="text-dark fw-600">{item.name}</span>
+                  <div className="ms-donut-legend ps-2" style={{ minWidth: "150px" }}>
+                    {donutItems.map((item, i) => (
+                      <div key={i} className="d-flex align-items-center justify-content-between mb-1 fs-11px">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
+                          <span className="text-dark fw-600">{item.name}</span>
+                        </div>
+                        <span className="fw-700 text-dark">{item.value}%</span>
                       </div>
-                      <span className="fw-700 text-dark">{item.pct}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 200 }}>
+                  No category data to chart yet.
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
@@ -828,6 +886,7 @@ export default function Income() {
         columns={columns}
         data={tableData}
         keyField="id"
+        loading={incomesLoading}
         title="All Income Transactions"
         subtitle={`Showing ${tableData.length} verified income logs`}
         searchPlaceholder="Search by payer, source, or reference..."
@@ -1068,8 +1127,8 @@ export default function Income() {
             <Button variant="light" size="sm" onClick={() => setShowAddModal(false)} className="rounded-6px px-3">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" className="ms-btn-income px-4">
-              <FiPlus size={14} /> Save Income
+            <Button type="submit" variant="primary" size="sm" className="ms-btn-income px-4" disabled={creating}>
+              <FiPlus size={14} /> {creating ? "Saving..." : "Save Income"}
             </Button>
           </Modal.Footer>
         </Form>
@@ -1270,8 +1329,8 @@ export default function Income() {
             <Button variant="light" size="sm" onClick={() => setShowEditModal(false)} className="rounded-6px px-3">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" className="rounded-6px px-4">
-              Update Record
+            <Button type="submit" variant="primary" size="sm" className="rounded-6px px-4" disabled={updating}>
+              {updating ? "Updating..." : "Update Record"}
             </Button>
           </Modal.Footer>
         </Form>
