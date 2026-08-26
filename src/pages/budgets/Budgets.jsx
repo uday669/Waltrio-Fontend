@@ -31,85 +31,49 @@ import {
 import Select from "react-select";
 import { formSelectStyles } from "../../utils/selectStyles";
 import CommonDataTable from "../../components/common/DataTable";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useBudgetCategories,
+  useUpsertBudgetCategory,
+  useDeleteBudgetCategory,
+} from "../../hooks/useBudgets";
+import { deleteBudgetCategory } from "../../api/budgets.api";
+import { toast } from "../../lib/toast";
 
-// Initial Mock Dataset for Budgets
-const INITIAL_BUDGETS = [
-  {
-    id: "BUD-01",
-    category: "Housing & Rent",
-    allocated: 12000,
-    spent: 10000,
-    period: "Monthly",
-    alertThreshold: 85,
-    icon: <FiHome size={15} />,
-    color: "#4f46e5",
-    bg: "#eef2ff",
-    rollover: false,
-  },
-  {
-    id: "BUD-02",
-    category: "Food & Dining",
-    allocated: 7000,
-    spent: 5400,
-    period: "Monthly",
-    alertThreshold: 80,
-    icon: <FiCoffee size={15} />,
-    color: "#8b5cf6",
-    bg: "#f5f3ff",
-    rollover: true,
-  },
-  {
-    id: "BUD-03",
-    category: "Transportation & Fuel",
-    allocated: 4500,
-    spent: 3500,
-    period: "Monthly",
-    alertThreshold: 75,
-    icon: <FiTrendingUp size={15} />,
-    color: "#f59e0b",
-    bg: "#fffbeb",
-    rollover: false,
-  },
-  {
-    id: "BUD-04",
-    category: "Shopping & Retail",
-    allocated: 4000,
-    spent: 4200, // Over budget
-    period: "Monthly",
-    alertThreshold: 90,
-    icon: <FiShoppingBag size={15} />,
-    color: "#ec4899",
-    bg: "#fdf2f8",
-    rollover: false,
-  },
-  {
-    id: "BUD-05",
-    category: "Utilities & Bills",
-    allocated: 3500,
-    spent: 2980,
-    period: "Monthly",
-    alertThreshold: 80,
-    icon: <FiZap size={15} />,
-    color: "#06b6d4",
-    bg: "#ecfeff",
-    rollover: true,
-  },
-  {
-    id: "BUD-06",
-    category: "Fitness & Wellness",
-    allocated: 5000,
-    spent: 4200,
-    period: "Monthly",
-    alertThreshold: 85,
-    icon: <FiActivity size={15} />,
-    color: "#10b981",
-    bg: "#ecfdf5",
-    rollover: false,
-  },
-];
+// Per-category visuals (icon + colors) attached to each server record.
+const CATEGORY_META = {
+  "Housing & Rent": { icon: <FiHome size={15} />, color: "#4f46e5", bg: "#eef2ff" },
+  "Food & Dining": { icon: <FiCoffee size={15} />, color: "#8b5cf6", bg: "#f5f3ff" },
+  "Transportation & Fuel": { icon: <FiTrendingUp size={15} />, color: "#f59e0b", bg: "#fffbeb" },
+  "Shopping & Retail": { icon: <FiShoppingBag size={15} />, color: "#ec4899", bg: "#fdf2f8" },
+  "Utilities & Bills": { icon: <FiZap size={15} />, color: "#06b6d4", bg: "#ecfeff" },
+  "Fitness & Wellness": { icon: <FiActivity size={15} />, color: "#10b981", bg: "#ecfdf5" },
+  Entertainment: { icon: <FiCoffee size={15} />, color: "#d97706", bg: "#fef3c7" },
+  Healthcare: { icon: <FiPieChart size={15} />, color: "#ef4444", bg: "#fff1f2" },
+  Education: { icon: <FiBook size={15} />, color: "#6366f1", bg: "#eef2ff" },
+};
+const DEFAULT_META = { icon: <FiPieChart size={15} />, color: "#4f46e5", bg: "#eef2ff" };
+const withVisuals = (b) => ({ ...b, ...(CATEGORY_META[b.category] || DEFAULT_META) });
 
 export default function Budgets() {
-  const [budgets, setBudgets] = useState(INITIAL_BUDGETS);
+  const queryClient = useQueryClient();
+
+  // GET /budget/category — real caps (visuals attached client-side).
+  const {
+    data: budgetsData,
+    isLoading: budgetsLoading,
+    isError: budgetsIsError,
+    error: budgetsErr,
+  } = useBudgetCategories();
+
+  React.useEffect(() => {
+    if (budgetsIsError) {
+      console.error("[budgets] request failed:", budgetsErr);
+      toast.error(budgetsErr?.message || "Could not load budgets.");
+    }
+  }, [budgetsIsError, budgetsErr]);
+
+  const budgets = useMemo(() => (budgetsData || []).map(withVisuals), [budgetsData]);
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -117,13 +81,41 @@ export default function Budgets() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeBudget, setActiveBudget] = useState(null);
 
-  // Form State
+  // Form State — only fields the API accepts.
   const [formData, setFormData] = useState({
     category: "Food & Dining",
-    allocated: "",
-    period: "Monthly",
+    label: "",
+    monthlyAmount: "",
     alertThreshold: "80",
-    rollover: false,
+  });
+
+  // ---- Mutations --------------------------------------------------------
+  // POST/PUT /budget/category (upsert) — used by both Add and Edit.
+  const { mutate: upsertBudget, isPending: saving } = useUpsertBudgetCategory({
+    onSuccess: () => {
+      toast.success("Budget saved.");
+      setShowAddModal(false);
+      setShowEditModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not save budget."),
+  });
+
+  // DELETE /budget/category/:id
+  const { mutate: deleteBudgetMut } = useDeleteBudgetCategory({
+    onSuccess: () => {
+      toast.success("Budget deleted.");
+      setShowDeleteModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not delete budget."),
+  });
+
+  // Exact body the API expects for an upsert (only these four fields).
+  const buildPayload = (extra = {}) => ({
+    category: formData.category,
+    label: formData.label || formData.category,
+    monthlyAmount: Number(formData.monthlyAmount),
+    alertThreshold: Number(formData.alertThreshold),
+    ...extra,
   });
 
   // Calculate Overall Metrics
@@ -177,38 +169,21 @@ export default function Budgets() {
   const handleOpenAdd = () => {
     setFormData({
       category: "Food & Dining",
-      allocated: "",
-      period: "Monthly",
+      label: "",
+      monthlyAmount: "",
       alertThreshold: "80",
-      rollover: false,
     });
     setShowAddModal(true);
   };
 
-  // Save Add
+  // Save Add -> POST /budget/category (upsert)
   const handleSaveAdd = (e) => {
     e.preventDefault();
-    if (!formData.category || !formData.allocated) return;
-
-    const colors = ["#4f46e5", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#10b981"];
-    const bgs = ["#eef2ff", "#f5f3ff", "#fffbeb", "#fdf2f8", "#ecfeff", "#ecfdf5"];
-    const randIdx = Math.floor(Math.random() * colors.length);
-
-    const newEntry = {
-      id: `BUD-${Math.floor(10 + Math.random() * 90)}`,
-      category: formData.category,
-      allocated: Number(formData.allocated),
-      spent: 0,
-      period: formData.period,
-      alertThreshold: Number(formData.alertThreshold),
-      icon: <FiPieChart size={15} />,
-      color: colors[randIdx],
-      bg: bgs[randIdx],
-      rollover: formData.rollover,
-    };
-
-    setBudgets([newEntry, ...budgets]);
-    setShowAddModal(false);
+    if (!formData.category || !formData.monthlyAmount) {
+      toast.error("Category and monthly amount are required.");
+      return;
+    }
+    upsertBudget(buildPayload());
   };
 
   // Open Edit
@@ -216,25 +191,18 @@ export default function Budgets() {
     setActiveBudget(b);
     setFormData({
       category: b.category,
-      allocated: b.allocated,
-      period: b.period,
+      label: b.label || b.category,
+      monthlyAmount: b.allocated,
       alertThreshold: b.alertThreshold || "80",
-      rollover: b.rollover || false,
     });
     setShowEditModal(true);
   };
 
-  // Save Edit
+  // Save Edit -> /budget/category upsert (keyed by category)
   const handleSaveEdit = (e) => {
     e.preventDefault();
     if (!activeBudget) return;
-
-    setBudgets(
-      budgets.map((b) =>
-        b.id === activeBudget.id ? { ...b, ...formData, allocated: Number(formData.allocated) } : b
-      )
-    );
-    setShowEditModal(false);
+    upsertBudget(buildPayload({ category: activeBudget.category }));
   };
 
   // Delete Handlers
@@ -243,15 +211,23 @@ export default function Budgets() {
     setShowDeleteModal(true);
   };
 
+  // Confirm Delete -> DELETE /budget/category/:id
   const handleConfirmDelete = () => {
     if (!activeBudget) return;
-    setBudgets(budgets.filter((b) => b.id !== activeBudget.id));
-    setShowDeleteModal(false);
+    deleteBudgetMut(activeBudget.id);
   };
 
-  const handleBulkDelete = (ids) => {
-    const idSet = new Set(ids);
-    setBudgets(budgets.filter((b) => !idSet.has(b.id)));
+  // Bulk Delete -> DELETE /budget/category/:id for each selected row
+  const handleBulkDelete = async (ids) => {
+    if (!ids?.length) return;
+    try {
+      await Promise.all(ids.map((id) => deleteBudgetCategory(id)));
+      toast.success(`${ids.length} budget cap(s) deleted.`);
+    } catch (err) {
+      toast.error(err.message || "Some budgets could not be deleted.");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    }
   };
 
   // Table Columns for CommonDataTable
@@ -279,7 +255,7 @@ export default function Budgets() {
           </div>
           <div>
             <div className="fw-700 text-dark fs-12.5px">{row.category}</div>
-            <div className="text-muted fs-11px">{row.period} Cycle {row.rollover ? "• Rollover ON" : ""}</div>
+            <div className="text-muted fs-11px">{row.label || row.category}</div>
           </div>
         </div>
       ),
@@ -597,6 +573,7 @@ export default function Budgets() {
         columns={columns}
         data={budgets}
         keyField="id"
+        loading={budgetsLoading}
         title="Category Budget Allocations Ledger"
         subtitle={`Showing ${budgets.length} budget limit rules`}
         searchPlaceholder="Search category budget..."
@@ -650,77 +627,55 @@ export default function Budgets() {
             </Form.Group>
 
             <Form.Group className="mb-2">
-              <Form.Label className="ur-form-label">Monthly Limit Amount (₹) *</Form.Label>
+              <Form.Label className="ur-form-label">Budget Label *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                placeholder="e.g. Groceries & Dining Out"
+                value={formData.label}
+                onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Monthly Amount (₹) *</Form.Label>
               <Form.Control
                 type="number"
                 required
                 min="100"
                 placeholder="e.g. 8000"
-                value={formData.allocated}
-                onChange={(e) => setFormData({ ...formData, allocated: e.target.value })}
+                value={formData.monthlyAmount}
+                onChange={(e) => setFormData({ ...formData, monthlyAmount: e.target.value })}
                 className="ur-form-input fw-700 text-primary"
               />
             </Form.Group>
 
-            <Row className="g-2 mb-2">
-              <Col xs={6}>
-                <Form.Group>
-                  <Form.Label className="ur-form-label">Cycle Period</Form.Label>
-                  <Select
-                    value={[
-                      { value: "Monthly", label: "Monthly" },
-                      { value: "Quarterly", label: "Quarterly" },
-                      { value: "Yearly", label: "Yearly" },
-                    ].find((p) => p.value === formData.period)}
-                    onChange={(opt) => setFormData({ ...formData, period: opt.value })}
-                    options={[
-                      { value: "Monthly", label: "Monthly" },
-                      { value: "Quarterly", label: "Quarterly" },
-                      { value: "Yearly", label: "Yearly" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={6}>
-                <Form.Group>
-                  <Form.Label className="ur-form-label">Alert Threshold (%)</Form.Label>
-                  <Select
-                    value={[
-                      { value: "70", label: "At 70% used" },
-                      { value: "80", label: "At 80% used" },
-                      { value: "90", label: "At 90% used" },
-                    ].find((t) => t.value === formData.alertThreshold)}
-                    onChange={(opt) => setFormData({ ...formData, alertThreshold: opt.value })}
-                    options={[
-                      { value: "70", label: "At 70% used" },
-                      { value: "80", label: "At 80% used" },
-                      { value: "90", label: "At 90% used" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Check
-              type="checkbox"
-              id="rollover-chk"
-              label="Enable Unspent Budget Rollover to next month"
-              checked={formData.rollover}
-              onChange={(e) => setFormData({ ...formData, rollover: e.target.checked })}
-              className="ur-checkbox-label mt-2"
-            />
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Alert Threshold (%)</Form.Label>
+              <Select
+                value={[
+                  { value: "70", label: "At 70% used" },
+                  { value: "80", label: "At 80% used" },
+                  { value: "90", label: "At 90% used" },
+                ].find((t) => t.value === formData.alertThreshold)}
+                onChange={(opt) => setFormData({ ...formData, alertThreshold: opt.value })}
+                options={[
+                  { value: "70", label: "At 70% used" },
+                  { value: "80", label: "At 80% used" },
+                  { value: "90", label: "At 90% used" },
+                ]}
+                styles={formSelectStyles}
+                menuPortalTarget={document.body}
+              />
+            </Form.Group>
           </Modal.Body>
           <Modal.Footer className="border-0 pt-0">
             <Button variant="light" size="sm" onClick={() => setShowAddModal(false)} className="rounded-6px px-3">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" className="rounded-6px px-4">
-              Set Budget
+            <Button type="submit" variant="primary" size="sm" className="rounded-6px px-4" disabled={saving}>
+              {saving ? "Saving..." : "Set Budget"}
             </Button>
           </Modal.Footer>
         </Form>
@@ -734,14 +689,44 @@ export default function Budgets() {
         <Form onSubmit={handleSaveEdit}>
           <Modal.Body className="py-3">
             <Form.Group className="mb-2">
-              <Form.Label className="ur-form-label">Monthly Limit (₹) *</Form.Label>
+              <Form.Label className="ur-form-label">Budget Label *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                value={formData.label}
+                onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Monthly Amount (₹) *</Form.Label>
               <Form.Control
                 type="number"
                 required
                 min="100"
-                value={formData.allocated}
-                onChange={(e) => setFormData({ ...formData, allocated: e.target.value })}
+                value={formData.monthlyAmount}
+                onChange={(e) => setFormData({ ...formData, monthlyAmount: e.target.value })}
                 className="ur-form-input fw-700 text-primary"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Alert Threshold (%)</Form.Label>
+              <Select
+                value={[
+                  { value: "70", label: "At 70% used" },
+                  { value: "80", label: "At 80% used" },
+                  { value: "90", label: "At 90% used" },
+                ].find((t) => t.value === String(formData.alertThreshold))}
+                onChange={(opt) => setFormData({ ...formData, alertThreshold: opt.value })}
+                options={[
+                  { value: "70", label: "At 70% used" },
+                  { value: "80", label: "At 80% used" },
+                  { value: "90", label: "At 90% used" },
+                ]}
+                styles={formSelectStyles}
+                menuPortalTarget={document.body}
               />
             </Form.Group>
           </Modal.Body>
@@ -749,8 +734,8 @@ export default function Budgets() {
             <Button variant="light" size="sm" onClick={() => setShowEditModal(false)} className="rounded-6px px-3">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" className="rounded-6px px-4">
-              Save Changes
+            <Button type="submit" variant="primary" size="sm" className="rounded-6px px-4" disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
           </Modal.Footer>
         </Form>

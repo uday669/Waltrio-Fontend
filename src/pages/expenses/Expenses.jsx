@@ -40,160 +40,17 @@ import { BsBank2 } from "react-icons/bs";
 import { IoWalletOutline } from "react-icons/io5";
 import { SiGooglepay, SiPhonepe } from "react-icons/si";
 import CommonDataTable from "../../components/common/DataTable";
-
-// Initial Mock Dataset for Expenses
-const INITIAL_EXPENSES_DATA = [
-  {
-    id: "EXP-9041",
-    merchant: "DLF Phase 2 Apartment Rent",
-    description: "Monthly apartment lease payment to landlord",
-    category: "Housing",
-    account: "GPay • landlord@okhdfc",
-    paymentMethod: "UPI Transfer",
-    date: "2026-08-18",
-    time: "02:30 PM",
-    amount: 10000,
-    status: "Paid",
-    receipt: "DLF_Receipt_Aug26.pdf",
-    tags: "Fixed, Essential",
-    notes: "Direct bank transfer confirmation #GPAY-8820",
-  },
-  {
-    id: "EXP-9040",
-    merchant: "Swiggy Instamart & Blinkit",
-    description: "Bi-weekly household groceries and vegetables",
-    category: "Food & Dining",
-    account: "PhonePe UPI",
-    paymentMethod: "UPI Transfer",
-    date: "2026-08-17",
-    time: "08:15 PM",
-    amount: 2500,
-    status: "Paid",
-    receipt: "Blinkit_Order_789.pdf",
-    tags: "Daily, Groceries",
-    notes: "Ordered monthly ration items",
-  },
-  {
-    id: "EXP-9039",
-    merchant: "Amazon India Online",
-    description: "Ergonomic Monitor Arm & Wireless Keyboard",
-    category: "Shopping",
-    account: "Visa •••• 8820",
-    paymentMethod: "Credit Card",
-    date: "2026-08-16",
-    time: "04:45 PM",
-    amount: 3200,
-    status: "Paid",
-    receipt: "Amazon_Tax_Invoice.pdf",
-    tags: "Work, Workspace",
-    notes: "Tax deductible workspace expense",
-  },
-  {
-    id: "EXP-9038",
-    merchant: "Torrent Power Electricity",
-    description: "Consumer #89210 • Power bill July usage",
-    category: "Utilities",
-    account: "Auto-Debit • HDFC",
-    paymentMethod: "Auto Debit",
-    date: "2026-08-15",
-    time: "11:20 AM",
-    amount: 1800,
-    status: "Paid",
-    receipt: "Torrent_Electricity.pdf",
-    tags: "Bills, Utilities",
-    notes: "Auto-debited on schedule",
-  },
-  {
-    id: "EXP-9037",
-    merchant: "Indian Oil Petrol Pump",
-    description: "Full fuel tank refill for car",
-    category: "Transportation",
-    account: "ICICI Bank •••• 9821",
-    paymentMethod: "Debit Card",
-    date: "2026-08-14",
-    time: "09:30 AM",
-    amount: 3500,
-    status: "Paid",
-    receipt: "IOCL_Fuel_Bill.pdf",
-    tags: "Fuel, Commute",
-    notes: "City & highway travel fuel",
-  },
-  {
-    id: "EXP-9036",
-    merchant: "Apollo Pharmacy & Healthcare",
-    description: "Prescription vitamins and medical checkup",
-    category: "Healthcare",
-    account: "PhonePe UPI",
-    paymentMethod: "UPI Transfer",
-    date: "2026-08-12",
-    time: "06:10 PM",
-    amount: 1450,
-    status: "Paid",
-    receipt: "Apollo_RX_Bill.pdf",
-    tags: "Health, Wellness",
-    notes: "Routine medical test and prescriptions",
-  },
-  {
-    id: "EXP-9035",
-    merchant: "Cult.fit Fitness Membership",
-    description: "Quarterly gym and fitness pass auto-renewal",
-    category: "Fitness & Wellness",
-    account: "Visa •••• 8820",
-    paymentMethod: "Credit Card",
-    date: "2026-08-10",
-    time: "07:00 AM",
-    amount: 4200,
-    status: "Paid",
-    receipt: "CultFit_Sub_Invoice.pdf",
-    tags: "Subscription, Health",
-    notes: "Quarterly pass access to 3 centers",
-  },
-  {
-    id: "EXP-9034",
-    merchant: "Netflix & Spotify Premium",
-    description: "Monthly entertainment digital entertainment pack",
-    category: "Entertainment",
-    account: "Visa •••• 8820",
-    paymentMethod: "Credit Card",
-    date: "2026-08-08",
-    time: "10:00 AM",
-    amount: 899,
-    status: "Paid",
-    receipt: "Netflix_Invoice_Aug.pdf",
-    tags: "Entertainment, Monthly",
-    notes: "Family 4K multi-screen pack",
-  },
-  {
-    id: "EXP-9033",
-    merchant: "Coursera & Udemy Learning",
-    description: "Full-Stack System Design Certification Course",
-    category: "Education",
-    account: "HDFC Bank •••• 4091",
-    paymentMethod: "Net Banking",
-    date: "2026-08-05",
-    time: "03:15 PM",
-    amount: 2200,
-    status: "Paid",
-    receipt: "Coursera_Certificate.pdf",
-    tags: "Skill, Upgrading",
-    notes: "Course enrolled with lifetime access",
-  },
-  {
-    id: "EXP-9032",
-    merchant: "Airtel Fiber Broadband",
-    description: "300 Mbps Unlimited Fiber Internet Bill",
-    category: "Utilities",
-    account: "PhonePe UPI",
-    paymentMethod: "UPI Transfer",
-    date: "2026-08-25",
-    time: "12:00 PM",
-    amount: 1180,
-    status: "Pending",
-    receipt: "Airtel_Bill_Due.pdf",
-    tags: "Internet, Utilities",
-    notes: "Bill generated, due on 25th Aug",
-  },
-];
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useExpenses,
+  useExpenseSummary,
+  useExpenseAnalytics,
+  useCreateExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+} from "../../hooks/useExpenses";
+import { deleteExpense } from "../../api/expenses.api";
+import { toast } from "../../lib/toast";
 
 // Categories definition with badges & styling
 const EXPENSE_CATEGORIES = [
@@ -207,16 +64,92 @@ const EXPENSE_CATEGORIES = [
   { label: "Fitness & Wellness", value: "Fitness & Wellness", color: "#10b981", bg: "#ecfdf5", icon: <FiActivity size={14} /> },
   { label: "Entertainment", value: "Entertainment", color: "#d97706", bg: "#fef3c7", icon: <FiCoffee size={14} /> },
   { label: "Education", value: "Education", color: "#6366f1", bg: "#eef2ff", icon: <FiBook size={14} /> },
+  { label: "Other", value: "Other", color: "#64748b", bg: "#f1f5f9" },
 ];
 
 export default function Expenses() {
-  const [expenses, setExpenses] = useState(INITIAL_EXPENSES_DATA);
+  const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("weekly");
+  // Server-side period filter for GET /expenses:
+  //   "current" -> no params (backend defaults to current month)
+  //   "all"     -> ?all=true
+  //   "YYYY-M"  -> ?month=M&year=YYYY
+  const [selectedPeriod, setSelectedPeriod] = useState("current");
 
-  // Monthly Budget Limit for budget metric
+  // Period dropdown options: This Month, All Time, then the last 11 months.
+  const periodOptions = useMemo(() => {
+    const opts = [
+      { value: "current", label: "This Month" },
+      { value: "all", label: "All Time" },
+    ];
+    const now = new Date();
+    for (let k = 1; k <= 11; k++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+      opts.push({
+        value: `${d.getFullYear()}-${d.getMonth() + 1}`,
+        label: d.toLocaleString("en-US", { month: "long", year: "numeric" }),
+      });
+    }
+    return opts;
+  }, []);
+
+  // Translate the selected period into GET /expenses query params.
+  const periodParams = useMemo(() => {
+    if (selectedPeriod === "all") return { all: true };
+    if (selectedPeriod === "current") return {};
+    const [year, month] = selectedPeriod.split("-").map(Number);
+    return { month, year };
+  }, [selectedPeriod]);
+
+  // Monthly budget limit for the (computed) daily-pace metric.
   const monthlyBudgetLimit = 35000;
+
+  // ---- Server data (TanStack Query) -------------------------------------
+  const {
+    data: expensesData,
+    isLoading: expensesLoading,
+    isError: expensesIsError,
+    error: expensesErr,
+  } = useExpenses({ ...periodParams, category: selectedCategory, status: selectedStatus });
+
+  React.useEffect(() => {
+    if (expensesIsError) {
+      console.error("[expenses] request failed:", expensesErr);
+      toast.error(expensesErr?.message || "Could not load expenses.");
+    }
+  }, [expensesIsError, expensesErr]);
+
+  const expenses = useMemo(() => expensesData || [], [expensesData]);
+
+  const { data: summaryData } = useExpenseSummary();
+  const { data: analyticsData } = useExpenseAnalytics({ range: timeRange });
+
+  // ---- Mutations --------------------------------------------------------
+  const { mutate: createExpenseMut, isPending: creating } = useCreateExpense({
+    onSuccess: () => {
+      toast.success("Expense added successfully.");
+      setShowAddModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not add expense."),
+  });
+
+  const { mutate: updateExpenseMut, isPending: updating } = useUpdateExpense({
+    onSuccess: () => {
+      toast.success("Expense updated successfully.");
+      setShowEditModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not update expense."),
+  });
+
+  const { mutate: deleteExpenseMut } = useDeleteExpense({
+    onSuccess: () => {
+      toast.success("Expense deleted.");
+      setShowDeleteModal(false);
+    },
+    onError: (err) => toast.error(err.message || "Could not delete expense."),
+  });
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -289,6 +222,15 @@ export default function Expenses() {
     return { total, paid, budgetPct, dailyAvg, topCat, maxVal };
   }, [expenses]);
 
+  // Prefer server summary (GET /expenses/summary); fall back to computed metrics.
+  const sx = summaryData || {};
+  const cards = {
+    total: Number(sx.totalOutflow ?? sx.totalExpenses ?? sx.total ?? metrics.total),
+    dailyAvg: Number(sx.dailyAverage ?? sx.dailyAvg ?? sx.averageDaily ?? metrics.dailyAvg),
+    topCat: sx.topCategory?.name ?? sx.largestCategory ?? (typeof sx.topCategory === "string" ? sx.topCategory : null) ?? metrics.topCat,
+    maxVal: Number(sx.topCategory?.amount ?? sx.topCategoryAmount ?? sx.maxVal ?? metrics.maxVal),
+  };
+
   // Filtered dataset for table
   const tableData = useMemo(() => {
     return expenses.filter((item) => {
@@ -297,6 +239,75 @@ export default function Expenses() {
       return matchCat && matchStatus;
     });
   }, [expenses, selectedCategory, selectedStatus]);
+
+  // ---- Chart data from GET /expenses/analytics (fallback: compute) ------
+  const EXP_DONUT_COLORS = ["#4f46e5", "#8b5cf6", "#f59e0b", "#ec4899", "#10b981", "#06b6d4", "#ef4444", "#d97706"];
+  const { trendCats, trendSpent, trendTarget, donutItems } = useMemo(() => {
+    const a = analyticsData || {};
+
+    // Spending trend
+    let tCats = [];
+    let tSpent = [];
+    let tTarget = [];
+    const tr = a.trend ?? a.spending ?? a.weekly ?? a.outflow ?? null;
+    if (Array.isArray(tr) && tr.length) {
+      tCats = tr.map((p) => p.label ?? p.week ?? p.name ?? "");
+      tSpent = tr.map((p) => Number(p.spent ?? p.amount ?? p.value ?? 0));
+      tTarget = tr.map((p) => Number(p.target ?? p.budget ?? 0));
+    } else if (expenses.length) {
+      // Last 6 months of outflow from real records.
+      const byMonth = {};
+      expenses.forEach((e) => {
+        const d = new Date(e.date);
+        if (isNaN(d)) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        byMonth[key] = (byMonth[key] || 0) + (Number(e.amount) || 0);
+      });
+      const now = new Date();
+      for (let k = 5; k >= 0; k--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        tCats.push(d.toLocaleString("en-US", { month: "short" }));
+        tSpent.push(byMonth[key] || 0);
+        tTarget.push(Math.round(monthlyBudgetLimit));
+      }
+    }
+
+    // Category donut
+    let dItems = [];
+    const dr = a.byCategory ?? a.categoryShare ?? a.distribution ?? a.categories ?? null;
+    if (Array.isArray(dr) && dr.length) {
+      const raw = dr.map((it) => ({
+        name: it.name ?? it.label ?? it.category ?? "Other",
+        value: Number(it.value ?? it.percentage ?? it.amount ?? 0),
+        color: it.color,
+      }));
+      const sum = raw.reduce((x, y) => x + y.value, 0);
+      const asPct = sum > 100 || sum === 0;
+      dItems = raw.map((it, i) => ({
+        name: it.name,
+        value: asPct && sum ? Math.round((it.value / sum) * 100) : Math.round(it.value),
+        color: it.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
+      }));
+    } else if (expenses.length) {
+      const catMap = {};
+      expenses.forEach((e) => {
+        catMap[e.category || "Other"] = (catMap[e.category || "Other"] || 0) + (Number(e.amount) || 0);
+      });
+      const total = Object.values(catMap).reduce((x, y) => x + y, 0) || 1;
+      dItems = Object.entries(catMap)
+        .sort((x, y) => y[1] - x[1])
+        .map(([name, amount], i) => {
+          const cat = EXPENSE_CATEGORIES.find((c) => c.value === name);
+          return { name, value: Math.round((amount / total) * 100), color: cat?.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length] };
+        });
+    }
+
+    return { trendCats: tCats, trendSpent: tSpent, trendTarget: tTarget, donutItems: dItems };
+  }, [analyticsData, expenses, monthlyBudgetLimit]);
+
+  const donutLabels = donutItems.map((d) => d.name);
+  const donutColors = donutItems.map((d) => d.color);
 
   // ApexChart: Spending Trend vs Budget
   const spendingTrendOptions = {
@@ -319,14 +330,16 @@ export default function Expenses() {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ["transparent"] },
     xaxis: {
-      categories: ["Aug 1–7", "Aug 8–14", "Aug 15–21", "Aug 22–28", "Aug 29–31"],
+      categories: trendCats,
       labels: { style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 } },
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
     yaxis: {
+      min: 0,
+      forceNiceScale: true,
       labels: {
-        formatter: (val) => `₹${val / 1000}k`,
+        formatter: (val) => (val >= 1000 ? `₹${(val / 1000).toFixed(val % 1000 ? 1 : 0)}k` : `₹${Math.round(val)}`),
         style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 },
       },
     },
@@ -343,15 +356,15 @@ export default function Expenses() {
   };
 
   const spendingTrendSeries = [
-    { name: "Spent Outflow", data: [6800, 8400, 9200, 5100, 3200] },
-    { name: "Budget Target", data: [7000, 7000, 7000, 7000, 7000] },
+    { name: "Spent Outflow", data: trendSpent },
+    { name: "Budget Target", data: trendTarget },
   ];
 
   // ApexChart: Expense Distribution Donut
   const donutOptions = {
     chart: { type: "donut", height: 210, fontFamily: "inherit" },
-    labels: ["Housing", "Food & Dining", "Transport", "Shopping", "Health & Other"],
-    colors: ["#4f46e5", "#8b5cf6", "#f59e0b", "#ec4899", "#10b981"],
+    labels: donutLabels,
+    colors: donutColors,
     dataLabels: {
       enabled: true,
       formatter: (val) => `${Math.round(val)}%`,
@@ -363,11 +376,11 @@ export default function Expenses() {
     stroke: { width: 2, colors: ["#ffffff"] },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `${val}% (₹${((val / 100) * metrics.total).toFixed(0)})` },
+      y: { formatter: (val) => `${val}% (₹${((val / 100) * cards.total).toFixed(0)})` },
     },
   };
 
-  const donutSeries = [36, 20, 16, 15, 13];
+  const donutSeries = donutItems.map((d) => d.value);
 
   // Open Add Modal
   const handleOpenAdd = () => {
@@ -388,19 +401,25 @@ export default function Expenses() {
     setShowAddModal(true);
   };
 
-  // Submit Add Form
+  // Exact body the API expects for create (POST) and update (PUT).
+  const buildPayload = () => ({
+    merchant: formData.merchant,
+    note: formData.description,
+    category: formData.category,
+    amount: Number(formData.amount),
+    date: formData.date,
+    status: formData.status,
+    attachment: formData.receiptImg || null,
+  });
+
+  // Submit Add Form -> POST /expenses
   const handleSaveAdd = (e) => {
     e.preventDefault();
-    if (!formData.merchant || !formData.amount) return;
-
-    const newEntry = {
-      id: `EXP-${Math.floor(9100 + Math.random() * 900)}`,
-      ...formData,
-      amount: Number(formData.amount),
-    };
-
-    setExpenses([newEntry, ...expenses]);
-    setShowAddModal(false);
+    if (!formData.merchant || !formData.amount) {
+      toast.error("Merchant and amount are required.");
+      return;
+    }
+    createExpenseMut(buildPayload());
   };
 
   // Open Edit Modal
@@ -413,7 +432,7 @@ export default function Expenses() {
       account: item.account,
       paymentMethod: item.paymentMethod || "UPI Transfer",
       amount: item.amount,
-      date: item.date,
+      date: item.date ? String(item.date).slice(0, 10) : "",
       time: item.time,
       status: item.status,
       receipt: item.receipt || "",
@@ -423,19 +442,11 @@ export default function Expenses() {
     setShowEditModal(true);
   };
 
-  // Submit Edit Form
+  // Submit Edit Form -> PUT /expenses/:id
   const handleSaveEdit = (e) => {
     e.preventDefault();
     if (!activeExpense) return;
-
-    setExpenses(
-      expenses.map((item) =>
-        item.id === activeExpense.id
-          ? { ...item, ...formData, amount: Number(formData.amount) }
-          : item
-      )
-    );
-    setShowEditModal(false);
+    updateExpenseMut({ id: activeExpense.id, ...buildPayload() });
   };
 
   // Open Delete Modal
@@ -444,17 +455,23 @@ export default function Expenses() {
     setShowDeleteModal(true);
   };
 
-  // Confirm Delete
+  // Confirm Delete -> DELETE /expenses/:id
   const handleConfirmDelete = () => {
     if (!activeExpense) return;
-    setExpenses(expenses.filter((e) => e.id !== activeExpense.id));
-    setShowDeleteModal(false);
+    deleteExpenseMut(activeExpense.id);
   };
 
-  // Bulk Delete
-  const handleBulkDelete = (ids) => {
-    const idSet = new Set(ids);
-    setExpenses(expenses.filter((e) => !idSet.has(e.id)));
+  // Bulk Delete -> DELETE /expenses/:id for each selected row
+  const handleBulkDelete = async (ids) => {
+    if (!ids?.length) return;
+    try {
+      await Promise.all(ids.map((id) => deleteExpense(id)));
+      toast.success(`${ids.length} expense record(s) deleted.`);
+    } catch (err) {
+      toast.error(err.message || "Some records could not be deleted.");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+    }
   };
 
   // View Details
@@ -655,14 +672,14 @@ export default function Expenses() {
           2. TOP 4 METRICS CARDS
           =================================================================== */}
       <Row className="g-3 mb-3">
-        <Col xs={12} sm={6} xl={3}>
+        <Col xs={12} sm={6} xl={4}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
                   <div className="ms-stat-title">Total Outflow (Month)</div>
                   <div className="ms-stat-val text-danger">
-                    ₹{metrics.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    ₹{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#fff1f2" }}>
@@ -679,39 +696,14 @@ export default function Expenses() {
           </Card>
         </Col>
 
-        <Col xs={12} sm={6} xl={3}>
-          <Card className="ms-premium-card h-100 border-0">
-            <Card.Body className="p-3 d-flex flex-column justify-content-between">
-              <div className="d-flex justify-content-between align-items-start mb-2">
-                <div>
-                  <div className="ms-stat-title">Budget Utilization</div>
-                  <div className="ms-stat-val">
-                    {metrics.budgetPct}% <span className="fs-12px text-muted fw-500">of ₹{monthlyBudgetLimit.toLocaleString("en-IN")}</span>
-                  </div>
-                </div>
-                <div className="ms-stat-icon-box" style={{ backgroundColor: "#fef3c7" }}>
-                  <FiAlertTriangle size={19} color="#d97706" />
-                </div>
-              </div>
-              <div className="pt-2 border-top border-light-subtle">
-                <ProgressBar
-                  now={metrics.budgetPct}
-                  className={metrics.budgetPct > 80 ? "ms-progress-red" : "ms-progress-blue"}
-                  style={{ height: "6px" }}
-                />
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col xs={12} sm={6} xl={3}>
+        <Col xs={12} sm={6} xl={4}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
                   <div className="ms-stat-title">Daily Average Spend</div>
                   <div className="ms-stat-val">
-                    ₹{metrics.dailyAvg.toLocaleString("en-IN")}
+                    ₹{cards.dailyAvg.toLocaleString("en-IN")}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#f5f3ff" }}>
@@ -726,14 +718,14 @@ export default function Expenses() {
           </Card>
         </Col>
 
-        <Col xs={12} sm={6} xl={3}>
+        <Col xs={12} sm={6} xl={4}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
                   <div className="ms-stat-title">Largest Cost Category</div>
                   <div className="ms-stat-val fs-18px text-truncate" style={{ maxWidth: "160px" }}>
-                    {metrics.topCat}
+                    {cards.topCat}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#eef2ff" }}>
@@ -742,7 +734,7 @@ export default function Expenses() {
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-danger fw-700 fs-11px">
-                  ₹{metrics.maxVal.toLocaleString("en-IN")}
+                  ₹{cards.maxVal.toLocaleString("en-IN")}
                 </span>
                 <span className="ms-stat-sub-text">Housing &amp; Leases</span>
               </div>
@@ -777,7 +769,13 @@ export default function Expenses() {
               </div>
 
               <div className="ms-chart-wrap pt-1">
-                <Chart options={spendingTrendOptions} series={spendingTrendSeries} type="bar" height={220} />
+                {trendSpent.length ? (
+                  <Chart options={spendingTrendOptions} series={spendingTrendSeries} type="bar" height={220} />
+                ) : (
+                  <div className="d-flex align-items-center justify-content-center text-muted fs-12px" style={{ height: 220 }}>
+                    No expense data to chart yet.
+                  </div>
+                )}
               </div>
             </Card.Body>
           </Card>
@@ -792,29 +790,29 @@ export default function Expenses() {
                 <p className="text-muted fs-11px mb-0">Category wise consumption</p>
               </div>
 
-              <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
-                <div style={{ width: "180px", height: "200px" }}>
-                  <Chart options={donutOptions} series={donutSeries} type="donut" height={200} />
-                </div>
+              {donutSeries.length ? (
+                <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
+                  <div style={{ width: "180px", height: "200px" }}>
+                    <Chart options={donutOptions} series={donutSeries} type="donut" height={200} />
+                  </div>
 
-                <div className="ms-donut-legend ps-2" style={{ minWidth: "150px" }}>
-                  {[
-                    { name: "Housing", pct: "36%", clr: "#4f46e5" },
-                    { name: "Food & Dining", pct: "20%", clr: "#8b5cf6" },
-                    { name: "Transport", pct: "16%", clr: "#f59e0b" },
-                    { name: "Shopping", pct: "15%", clr: "#ec4899" },
-                    { name: "Health & Other", pct: "13%", clr: "#10b981" },
-                  ].map((item, i) => (
-                    <div key={i} className="d-flex align-items-center justify-content-between mb-1 fs-11px">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="ms-legend-dot" style={{ backgroundColor: item.clr }}></span>
-                        <span className="text-dark fw-600">{item.name}</span>
+                  <div className="ms-donut-legend ps-2" style={{ minWidth: "150px" }}>
+                    {donutItems.map((item, i) => (
+                      <div key={i} className="d-flex align-items-center justify-content-between mb-1 fs-11px">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
+                          <span className="text-dark fw-600">{item.name}</span>
+                        </div>
+                        <span className="fw-700 text-dark">{item.value}%</span>
                       </div>
-                      <span className="fw-700 text-dark">{item.pct}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 200 }}>
+                  No expense data to chart yet.
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
@@ -827,8 +825,9 @@ export default function Expenses() {
         columns={columns}
         data={tableData}
         keyField="id"
+        loading={expensesLoading}
         title="All Expense Logs"
-        subtitle={`Showing ${tableData.length} verified expense transactions`}
+        subtitle={`${periodOptions.find((p) => p.value === selectedPeriod)?.label || "This Month"} • ${tableData.length} expense log(s)`}
         searchPlaceholder="Search by merchant, note, or reference..."
         selectableRows={true}
         initialSortField="date"
@@ -838,28 +837,20 @@ export default function Expenses() {
         exportFileName="Expense_Statements"
         filters={
           <div className="ur-inline-filters">
+            {/* Period Filter — GET /expenses?month=&year= | ?all=true | (default current month) */}
+            <Select
+              value={periodOptions.find((p) => p.value === selectedPeriod)}
+              onChange={(opt) => setSelectedPeriod(opt ? opt.value : "current")}
+              options={periodOptions}
+              styles={filterSelectStyles}
+              isSearchable={false}
+            />
+
             {/* Category Filter */}
             <Select
               value={EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === selectedCategory)}
               onChange={(opt) => setSelectedCategory(opt ? opt.value : "all")}
               options={EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
-              styles={filterSelectStyles}
-              isSearchable={false}
-            />
-
-            {/* Status Filter */}
-            <Select
-              value={[
-                { value: "all", label: "All Statuses" },
-                { value: "Paid", label: "Paid" },
-                { value: "Pending", label: "Pending" },
-              ].find((s) => s.value === selectedStatus)}
-              onChange={(opt) => setSelectedStatus(opt ? opt.value : "all")}
-              options={[
-                { value: "all", label: "All Statuses" },
-                { value: "Paid", label: "Paid" },
-                { value: "Pending", label: "Pending" },
-              ]}
               styles={filterSelectStyles}
               isSearchable={false}
             />
@@ -915,7 +906,7 @@ export default function Expenses() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
                   <Form.Control
@@ -931,34 +922,7 @@ export default function Expenses() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Payment Method / Account *</Form.Label>
-                  <Select
-                    value={[
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay • landlord@okhdfc", label: "GPay UPI" },
-                      { value: "Visa •••• 8820", label: "Visa Credit Card •••• 8820" },
-                      { value: "Auto-Debit • HDFC", label: "Auto-Debit • HDFC" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ].find((a) => a.value === formData.account)}
-                    onChange={(opt) => setFormData({ ...formData, account: opt.value })}
-                    options={[
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay • landlord@okhdfc", label: "GPay UPI" },
-                      { value: "Visa •••• 8820", label: "Visa Credit Card •••• 8820" },
-                      { value: "Auto-Debit • HDFC", label: "Auto-Debit • HDFC" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
                   <Form.Control
@@ -966,25 +930,6 @@ export default function Expenses() {
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     className="ur-form-input"
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Status</Form.Label>
-                  <Select
-                    value={[
-                      { value: "Paid", label: "Paid" },
-                      { value: "Pending", label: "Pending" },
-                    ].find((s) => s.value === formData.status)}
-                    onChange={(opt) => setFormData({ ...formData, status: opt.value })}
-                    options={[
-                      { value: "Paid", label: "Paid" },
-                      { value: "Pending", label: "Pending" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
                   />
                 </Form.Group>
               </Col>
@@ -1056,8 +1001,8 @@ export default function Expenses() {
             <Button variant="light" size="sm" onClick={() => setShowAddModal(false)} className="rounded-6px px-3">
               Cancel
             </Button>
-            <Button type="submit" variant="danger" size="sm" className="ms-btn-expense px-4">
-              <FiPlus size={14} /> Save Expense
+            <Button type="submit" variant="danger" size="sm" className="ms-btn-expense px-4" disabled={creating}>
+              <FiPlus size={14} /> {creating ? "Saving..." : "Save Expense"}
             </Button>
           </Modal.Footer>
         </Form>
@@ -1108,7 +1053,7 @@ export default function Expenses() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
                   <Form.Control
@@ -1123,34 +1068,7 @@ export default function Expenses() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Payment Method / Account</Form.Label>
-                  <Select
-                    value={[
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay • landlord@okhdfc", label: "GPay UPI" },
-                      { value: "Visa •••• 8820", label: "Visa Credit Card •••• 8820" },
-                      { value: "Auto-Debit • HDFC", label: "Auto-Debit • HDFC" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ].find((a) => a.value === formData.account)}
-                    onChange={(opt) => setFormData({ ...formData, account: opt.value })}
-                    options={[
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay • landlord@okhdfc", label: "GPay UPI" },
-                      { value: "Visa •••• 8820", label: "Visa Credit Card •••• 8820" },
-                      { value: "Auto-Debit • HDFC", label: "Auto-Debit • HDFC" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
                   <Form.Control
@@ -1158,25 +1076,6 @@ export default function Expenses() {
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     className="ur-form-input"
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Status</Form.Label>
-                  <Select
-                    value={[
-                      { value: "Paid", label: "Paid" },
-                      { value: "Pending", label: "Pending" },
-                    ].find((s) => s.value === formData.status)}
-                    onChange={(opt) => setFormData({ ...formData, status: opt.value })}
-                    options={[
-                      { value: "Paid", label: "Paid" },
-                      { value: "Pending", label: "Pending" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
                   />
                 </Form.Group>
               </Col>
@@ -1247,8 +1146,8 @@ export default function Expenses() {
             <Button variant="light" size="sm" onClick={() => setShowEditModal(false)} className="rounded-6px px-3">
               Cancel
             </Button>
-            <Button type="submit" variant="danger" size="sm" className="rounded-6px px-4">
-              Update Expense
+            <Button type="submit" variant="danger" size="sm" className="rounded-6px px-4" disabled={updating}>
+              {updating ? "Updating..." : "Update Expense"}
             </Button>
           </Modal.Footer>
         </Form>

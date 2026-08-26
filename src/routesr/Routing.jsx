@@ -33,11 +33,11 @@ export default function Routing() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/income" element={<Income />} />
         <Route path="/expenses" element={<Expenses />} />
-        <Route path="/transactions" element={<Transactions />} />
+        {/* <Route path="/transactions" element={<Transactions />} /> */}
         <Route path="/budgets" element={<Budgets />} />
-        <Route path="/goals" element={<SavingsGoals />} />
-        <Route path="/split" element={<GroupsSplit />} />
-        <Route path="/emi" element={<EmiLoans />} />
+        {/* <Route path="/goals" element={<SavingsGoals />} /> */}
+        {/* <Route path="/split" element={<GroupsSplit />} /> */}
+        {/* <Route path="/emi" element={<EmiLoans />} /> */}
         {/* <Route path="/calendar" element={<Calendar />} /> */}
         {/* <Route path="/reports" element={<Reports />} /> */}
         {/* <Route path="/notifications" element={<Notifications />} /> */}

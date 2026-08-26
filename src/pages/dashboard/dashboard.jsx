@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
@@ -8,6 +8,8 @@ import Button from "react-bootstrap/Button";
 import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
 import ProgressBar from "react-bootstrap/ProgressBar";
+import Modal from "react-bootstrap/Modal";
+import Form from "react-bootstrap/Form";
 import Chart from "react-apexcharts";
 import Select from "react-select";
 import {
@@ -31,58 +33,225 @@ import { IoWalletOutline } from "react-icons/io5";
 import { FaPiggyBank } from "react-icons/fa";
 import { BsBank2, BsStars } from "react-icons/bs";
 import { SiGooglepay, SiPhonepe } from "react-icons/si";
+import { useDashboardOverview, useTotalBalance } from "../../hooks/useDashboard";
+import { useBudgetCategories } from "../../hooks/useBudgets";
+import { useCreateIncome } from "../../hooks/useIncomes";
+import { useCreateExpense } from "../../hooks/useExpenses";
+import { formSelectStyles } from "../../utils/selectStyles";
+import { toast } from "../../lib/toast";
+import { useQueryClient } from "@tanstack/react-query";
+
+// Category options for the quick-add modals.
+const INCOME_CATEGORIES = ["Salary", "Freelance", "Rental", "Dividends", "Consulting", "Investments", "Digital Products", "Bonus", "Other"].map((c) => ({ value: c, label: c }));
+const EXPENSE_CATEGORIES = ["Housing", "Food & Dining", "Transportation", "Shopping", "Utilities", "Healthcare", "Fitness & Wellness", "Entertainment", "Education", "Other"].map((c) => ({ value: c, label: c }));
+const today = () => new Date().toISOString().slice(0, 10);
+
+// Currency + percent formatting helpers.
+const fmtCurrency = (n) =>
+  `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+const fmtPct = (v) => `${Number(v) >= 0 ? "+" : ""}${Number(v || 0)}%`;
+
+// Palette reused for the expense-category donut.
+const DONUT_COLORS = ["#4f46e5", "#8b5cf6", "#f59e0b", "#10b981", "#06b6d4", "#94a3b8", "#ec4899", "#e11d48"];
+
+// Per-category visuals for the Budget Overview "Category Allocations" list.
+const BUDGET_CAT_META = {
+  "Food & Dining": { icon: <FiCoffee size={14} />, color: "#8b5cf6", bg: "#f5f3ff", gradient: "linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%)" },
+  "Housing & Rent": { icon: <FiHome size={14} />, color: "#4f46e5", bg: "#eef2ff", gradient: "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)" },
+  Transportation: { icon: <FiArrowRight size={14} />, color: "#d97706", bg: "#fffbeb", gradient: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)" },
+  "Transportation & Fuel": { icon: <FiArrowRight size={14} />, color: "#d97706", bg: "#fffbeb", gradient: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)" },
+  Shopping: { icon: <FiShoppingBag size={14} />, color: "#059669", bg: "#ecfdf5", gradient: "linear-gradient(90deg, #10b981 0%, #34d399 100%)" },
+  "Shopping & Retail": { icon: <FiShoppingBag size={14} />, color: "#059669", bg: "#ecfdf5", gradient: "linear-gradient(90deg, #10b981 0%, #34d399 100%)" },
+  Utilities: { icon: <FiZap size={14} />, color: "#0891b2", bg: "#ecfeff", gradient: "linear-gradient(90deg, #06b6d4 0%, #22d3ee 100%)" },
+  "Utilities & Bills": { icon: <FiZap size={14} />, color: "#0891b2", bg: "#ecfeff", gradient: "linear-gradient(90deg, #06b6d4 0%, #22d3ee 100%)" },
+};
+const DEFAULT_BUDGET_META = { icon: <FiTarget size={14} />, color: "#4f46e5", bg: "#eef2ff", gradient: "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)" };
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  // Select2 Options for Chart (Compact)
-  const timePeriodOptions = [
-    { value: "weekly", label: "Weekly" },
-    { value: "monthly", label: "Monthly" },
-    { value: "yearly", label: "Yearly" },
-  ];
-  const [selectedPeriod, setSelectedPeriod] = useState(timePeriodOptions[0]);
+  const queryClient = useQueryClient();
 
-  // 1. Top 4 Stat Cards
+  // ---- Quick-add modals (Add Income / Add Expense) ----------------------
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [incomeForm, setIncomeForm] = useState({ source: "", category: "Salary", amount: "", date: today(), description: "" });
+  const [expenseForm, setExpenseForm] = useState({ merchant: "", category: "Food & Dining", amount: "", date: today(), description: "" });
+
+  const refreshDashboard = () => queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+
+  const { mutate: createIncomeMut, isPending: savingIncome } = useCreateIncome({
+    onSuccess: () => {
+      toast.success("Income added successfully.");
+      setShowIncomeModal(false);
+      refreshDashboard();
+    },
+    onError: (err) => toast.error(err.message || "Could not add income."),
+  });
+
+  const { mutate: createExpenseMut, isPending: savingExpense } = useCreateExpense({
+    onSuccess: () => {
+      toast.success("Expense added successfully.");
+      setShowExpenseModal(false);
+      refreshDashboard();
+    },
+    onError: (err) => toast.error(err.message || "Could not add expense."),
+  });
+
+  const openIncomeModal = () => {
+    setIncomeForm({ source: "", category: "Salary", amount: "", date: today(), description: "" });
+    setShowIncomeModal(true);
+  };
+  const openExpenseModal = () => {
+    setExpenseForm({ merchant: "", category: "Food & Dining", amount: "", date: today(), description: "" });
+    setShowExpenseModal(true);
+  };
+
+  const handleSaveIncome = (e) => {
+    e.preventDefault();
+    if (!incomeForm.source || !incomeForm.amount) {
+      toast.error("Source and amount are required.");
+      return;
+    }
+    createIncomeMut({
+      incomeSource: incomeForm.source,
+      category: incomeForm.category,
+      amount: Number(incomeForm.amount),
+      date: incomeForm.date,
+      description: incomeForm.description,
+    });
+  };
+
+  const handleSaveExpense = (e) => {
+    e.preventDefault();
+    if (!expenseForm.merchant || !expenseForm.amount) {
+      toast.error("Merchant and amount are required.");
+      return;
+    }
+    createExpenseMut({
+      merchant: expenseForm.merchant,
+      note: expenseForm.description,
+      category: expenseForm.category,
+      amount: Number(expenseForm.amount),
+      date: expenseForm.date,
+      status: "Paid",
+      attachment: null,
+    });
+  };
+
+  // GET /dashboard/overview
+  const { data: overview } = useDashboardOverview();
+  const c = overview?.cards || {};
+
+  // GET /dashboard/total-balance — dedicated source for the Total Balance card.
+  const { data: totalBalanceData } = useTotalBalance();
+  // Accept a bare number or an object with common field names.
+  const tb =
+    typeof totalBalanceData === "number" ? { totalBalance: totalBalanceData } : totalBalanceData || {};
+  const totalBalance = tb.totalBalance ?? tb.balance ?? tb.amount ?? c.totalBalance;
+  const totalBalanceChange = tb.totalBalanceChange ?? tb.change ?? c.totalBalanceChange ?? 0;
+  const ive = overview?.incomeVsExpenses || {};
+  const expCats = overview?.expenseCategories || {};
+  const budget = overview?.budgetOverview || {};
+
+  // GET /budget/category — powers the Category Allocations list below.
+  const { data: budgetCaps } = useBudgetCategories();
+  const categoryAllocations = useMemo(() => {
+    const caps = Array.isArray(budgetCaps) ? budgetCaps : [];
+    return caps.map((cap) => {
+      const allocated = Number(cap.allocated) || 0;
+      const spent = Number(cap.spent) || 0;
+      const pct = allocated > 0 ? Math.round((spent / allocated) * 100) : 0;
+      const meta = BUDGET_CAT_META[cap.category] || DEFAULT_BUDGET_META;
+      const isOver = pct >= 100;
+      const isWarn = !isOver && pct >= Number(cap.alertThreshold || 80);
+      return {
+        name: cap.category,
+        spent,
+        allocated,
+        pct,
+        icon: meta.icon,
+        color: meta.color,
+        bg: meta.bg,
+        gradient: meta.gradient,
+        statusClass: isOver ? "danger" : isWarn ? "warning" : "success",
+        statusLabel: isOver ? "Over Limit" : isWarn ? "Warning" : "On Track",
+        percentColor: isOver ? "#ef4444" : isWarn ? "#d97706" : meta.color,
+      };
+    });
+  }, [budgetCaps]);
+
+  // Budget summary strip (limit / spent / available / %) — computed from the
+  // same caps so it reconciles with the allocations list; falls back to the
+  // overview's budgetOverview when there are no caps.
+  const budgetSummary = useMemo(() => {
+    if (categoryAllocations.length === 0) {
+      const limit = Number(budget.monthlyLimit || 0);
+      const spent = Number(budget.spent || 0);
+      return {
+        limit,
+        spent,
+        available: Number(budget.available ?? Math.max(0, limit - spent)),
+        pct: Number(budget.percentageUsed ?? (limit > 0 ? Math.round((spent / limit) * 100) : 0)),
+      };
+    }
+    const limit = categoryAllocations.reduce((a, c) => a + c.allocated, 0);
+    const spent = categoryAllocations.reduce((a, c) => a + c.spent, 0);
+    return {
+      limit,
+      spent,
+      available: Math.max(0, limit - spent),
+      pct: limit > 0 ? Math.round((spent / limit) * 100) : 0,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryAllocations, budget.monthlyLimit, budget.spent, budget.available, budget.percentageUsed]);
+  const goals = overview?.savingsGoals || [];
+
+  // 1. Top 4 Stat Cards — from data.cards
   const stats = [
     {
       title: "Total Balance",
-      value: "₹42,500.00",
-      change: "+12.5%",
-      isPositive: true,
+      value: fmtCurrency(totalBalance),
+      change: fmtPct(totalBalanceChange),
+      isPositive: Number(totalBalanceChange) >= 0,
       icon: <IoWalletOutline size={20} color="#4f46e5" />,
       iconBg: "#eef2ff",
-      sub: "Available in primary account",
+      sub: "Available across accounts",
     },
     {
       title: "Total Income",
-      value: "₹50,000.00",
-      change: "+8.2%",
-      isPositive: true,
+      value: fmtCurrency(c.totalIncome?.amount),
+      change: fmtPct(c.totalIncome?.change),
+      isPositive: Number(c.totalIncome?.change ?? 0) >= 0,
       icon: <FiTrendingUp size={20} color="#10b981" />,
       iconBg: "#ecfdf5",
-      sub: "+₹3,800 higher than July",
+      sub: `${fmtCurrency(c.totalIncome?.vsPreviousMonth)} vs last month`,
     },
     {
       title: "Total Expenses",
-      value: "₹20,500.00",
-      change: "-4.3%",
-      isPositive: true,
+      value: fmtCurrency(c.totalExpenses?.amount),
+      change: fmtPct(c.totalExpenses?.change),
+      isPositive: Number(c.totalExpenses?.change ?? 0) <= 0,
       icon: <FiArrowDownLeft size={20} color="#ef4444" />,
       iconBg: "#fff1f2",
-      sub: "41% of monthly budget used",
+      sub: `${Number(c.totalExpenses?.budgetUsedPercentage ?? 0)}% of monthly budget used`,
     },
     {
       title: "Total Savings",
-      value: "₹29,500.00",
-      change: "+15.7%",
-      isPositive: true,
+      value: fmtCurrency(c.totalSavings?.amount),
+      change: fmtPct(c.totalSavings?.change),
+      isPositive: Number(c.totalSavings?.change ?? 0) >= 0,
       icon: <FaPiggyBank size={18} color="#4f46e5" />,
       iconBg: "#eef2ff",
-      sub: "59% net savings rate this month",
+      sub: `${Number(c.totalSavings?.netSavingsRate ?? 0)}% net savings rate`,
     },
   ];
 
-  // 2. Bar Chart: Income vs Expenses
+  // 2. Bar Chart: Income vs Expenses — from incomeVsExpenses.weekly
+  const weekly = Array.isArray(ive.weekly) ? ive.weekly : [];
+  const barCategories = weekly.map((w) => w.label);
+  const barIncome = weekly.map((w) => Number(w.income || 0));
+  const barExpenses = weekly.map((w) => Number(w.expenses || 0));
+
   const barChartOptions = {
     chart: {
       type: "bar",
@@ -103,7 +272,7 @@ export default function Dashboard() {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ["transparent"] },
     xaxis: {
-      categories: ["Aug 1–7", "Aug 8–14", "Aug 15–21", "Aug 22–28", "Aug 29–31"],
+      categories: barCategories,
       labels: {
         style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 },
       },
@@ -112,10 +281,10 @@ export default function Dashboard() {
     },
     yaxis: {
       min: 0,
-      max: 20000,
+      forceNiceScale: true,
       tickAmount: 4,
       labels: {
-        formatter: (val) => (val === 0 ? "0" : `${val / 1000}K`),
+        formatter: (val) => (val === 0 ? "0" : `${(val / 1000).toFixed(val % 1000 ? 1 : 0)}K`),
         style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 },
       },
     },
@@ -132,11 +301,23 @@ export default function Dashboard() {
   };
 
   const barChartSeries = [
-    { name: "Income", data: [15000, 12000, 17500, 12500, 7500] },
-    { name: "Expenses", data: [5000, 4000, 6200, 5200, 4500] },
+    { name: "Income", data: barIncome },
+    { name: "Expenses", data: barExpenses },
   ];
 
-  // 3. Donut Chart: Expense Categories
+  // 3. Donut Chart: Expense Categories — from expenseCategories.categories
+  const expCatList = Array.isArray(expCats.categories) ? expCats.categories : [];
+  const expTotal = Number(expCats.total || 0);
+  const donutLabels = expCatList.map((x) => x.category);
+  const donutColors = expCatList.map((x, i) => x.color || DONUT_COLORS[i % DONUT_COLORS.length]);
+  const donutSeries = expCatList.map((x) => Number(x.percentage || 0));
+  const categoryLegend = expCatList.map((x, i) => ({
+    name: x.category,
+    percent: `${Number(x.percentage || 0)}%`,
+    amount: `₹${Number(x.total || 0).toLocaleString("en-IN")}`,
+    color: x.color || DONUT_COLORS[i % DONUT_COLORS.length],
+  }));
+
   const donutOptions = {
     chart: {
       type: "donut",
@@ -144,8 +325,8 @@ export default function Dashboard() {
       fontFamily: "inherit",
       parentHeightOffset: 0,
     },
-    labels: ["Housing", "Food & Dining", "Transport", "Shopping", "Utilities", "Other"],
-    colors: ["#4f46e5", "#8b5cf6", "#f59e0b", "#10b981", "#06b6d4", "#94a3b8"],
+    labels: donutLabels,
+    colors: donutColors,
     dataLabels: {
       enabled: true,
       formatter: (val) => `${Math.round(val)}%`,
@@ -163,66 +344,37 @@ export default function Dashboard() {
     stroke: { width: 2, colors: ["#ffffff"] },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `${val}% (₹${((val / 100) * 20500).toFixed(0)})` },
+      y: { formatter: (val) => `${val}% (₹${((val / 100) * expTotal).toFixed(0)})` },
     },
   };
 
-  const donutSeries = [30, 22, 15, 12, 11, 10];
-
-  const categoryLegend = [
-    { name: "Housing", percent: "30%", amount: "₹6,150", color: "#4f46e5" },
-    { name: "Food & Dining", percent: "22%", amount: "₹4,510", color: "#8b5cf6" },
-    { name: "Transport", percent: "15%", amount: "₹3,075", color: "#f59e0b" },
-    { name: "Shopping", percent: "12%", amount: "₹2,460", color: "#10b981" },
-    { name: "Utilities", percent: "11%", amount: "₹2,255", color: "#06b6d4" },
-    { name: "Other", percent: "10%", amount: "₹2,050", color: "#94a3b8" },
+  // 4. Savings Goals — from data.savingsGoals
+  const GOAL_GRADIENTS = [
+    "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)",
+    "linear-gradient(90deg, #10b981 0%, #34d399 100%)",
+    "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)",
   ];
-
-  // 4. Savings Goals Data
-  const savingsGoals = [
-    {
-      title: "MacBook Pro M3",
-      icon: "💻",
+  const savingsGoals = goals.map((g, i) => {
+    const saved = Number(g.saved ?? g.savedAmount ?? g.currentAmount ?? 0);
+    const target = Number(g.target ?? g.targetAmount ?? 0);
+    const percent = Number(g.percent ?? g.percentage ?? (target ? Math.round((saved / target) * 100) : 0));
+    return {
+      title: g.title ?? g.name ?? "Goal",
+      icon: g.icon ?? "🎯",
       iconBg: "#eef2ff",
-      category: "Tech & Workspace",
-      saved: 45000,
-      target: 80000,
-      percent: 56,
-      gradient: "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)",
+      category: g.category ?? "Savings",
+      saved,
+      target,
+      percent,
+      gradient: GOAL_GRADIENTS[i % GOAL_GRADIENTS.length],
       badgeColor: "#4f46e5",
       badgeBg: "#eef2ff",
-      remainingText: "₹35,000 left",
-      eta: "Est. Oct 2026",
-    },
-    {
-      title: "Emergency Safety Net",
-      icon: "🛡️",
-      iconBg: "#ecfdf5",
-      category: "Emergency Reserve",
-      saved: 25000,
-      target: 50000,
-      percent: 50,
-      gradient: "linear-gradient(90deg, #10b981 0%, #34d399 100%)",
-      badgeColor: "#10b981",
-      badgeBg: "#ecfdf5",
-      remainingText: "₹25,000 left",
-      eta: "Est. Nov 2026",
-    },
-    {
-      title: "Bali Vacation 2026",
-      icon: "✈️",
-      iconBg: "#fffbeb",
-      category: "Travel & Leisure",
-      saved: 18000,
-      target: 40000,
-      percent: 45,
-      gradient: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)",
-      badgeColor: "#d97706",
-      badgeBg: "#fef3c7",
-      remainingText: "₹22,000 left",
-      eta: "Est. Dec 2026",
-    },
-  ];
+      remainingText: `₹${Math.max(target - saved, 0).toLocaleString("en-IN")} left`,
+      eta: g.eta ?? g.targetDate ?? "",
+    };
+  });
+  const totalSaved = savingsGoals.reduce((a, g) => a + g.saved, 0);
+  const totalTarget = savingsGoals.reduce((a, g) => a + g.target, 0);
 
   // 5. Clean Transactions Data
   const transactions = [
@@ -298,47 +450,6 @@ export default function Dashboard() {
     },
   ];
 
-  // Select2 Custom Styling (Compact 30px)
-  const selectStyles = {
-    control: (base, state) => ({
-      ...base,
-      backgroundColor: "#ffffff",
-      borderColor: state.isFocused ? "#4f46e5" : "#e2e8f0",
-      borderRadius: "6px",
-      minHeight: "30px",
-      height: "30px",
-      fontSize: "11.5px",
-      fontWeight: "500",
-      boxShadow: state.isFocused ? "0 0 0 2px rgba(79, 70, 229, 0.15)" : "none",
-      cursor: "pointer",
-      "&:hover": { borderColor: "#cbd5e1" },
-    }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isSelected
-        ? "#4f46e5"
-        : state.isFocused
-        ? "rgba(79, 70, 229, 0.08)"
-        : "#ffffff",
-      color: state.isSelected ? "#ffffff" : "#0f172a",
-      fontSize: "11.5px",
-      borderRadius: "5px",
-      margin: "2px 4px",
-      width: "calc(100% - 8px)",
-      cursor: "pointer",
-    }),
-    menu: (base) => ({
-      ...base,
-      borderRadius: "8px",
-      boxShadow: "0 8px 20px -3px rgba(0, 0, 0, 0.1)",
-      border: "1px solid #e2e8f0",
-      zIndex: 1000,
-    }),
-    singleValue: (base) => ({ ...base, color: "#0f172a", fontSize: "11.5px" }),
-    indicatorSeparator: () => ({ display: "none" }),
-    dropdownIndicator: (base) => ({ ...base, color: "#64748b", padding: "1px 5px" }),
-  };
-
   return (
     <Container fluid className="p-0 ms-dashboard">
       {/* ===================================================================
@@ -355,11 +466,11 @@ export default function Dashboard() {
         </div>
 
         <div className="d-flex align-items-center gap-2">
-          <Button className="ms-btn-income" onClick={() => navigate("/income")}>
+          <Button className="ms-btn-income" onClick={openIncomeModal}>
             <FiPlus size={13} />
             <span>Add Income</span>
           </Button>
-          <Button className="ms-btn-expense" onClick={() => navigate("/expenses")}>
+          <Button className="ms-btn-expense" onClick={openExpenseModal}>
             <FiMinus size={13} />
             <span>Add Expense</span>
           </Button>
@@ -422,15 +533,6 @@ export default function Dashboard() {
                     <h5 className="ms-card-title mb-0">Income vs Expenses</h5>
                     <p className="text-muted fs-11px mb-0">Cash inflows vs outflows trend</p>
                   </div>
-                  <div style={{ width: "90px" }}>
-                    <Select
-                      value={selectedPeriod}
-                      onChange={setSelectedPeriod}
-                      options={timePeriodOptions}
-                      styles={selectStyles}
-                      isSearchable={false}
-                    />
-                  </div>
                 </div>
 
                 {/* Legend */}
@@ -440,14 +542,14 @@ export default function Dashboard() {
                       className="ms-legend-square"
                       style={{ backgroundColor: "#4f46e5" }}
                     ></span>
-                    <span className="fw-600 text-dark">Income: ₹64,000</span>
+                    <span className="fw-600 text-dark">Income: ₹{Number(ive.totalIncome || 0).toLocaleString("en-IN")}</span>
                   </span>
                   <span className="d-flex align-items-center gap-1">
                     <span
                       className="ms-legend-square"
                       style={{ backgroundColor: "#f43f5e" }}
                     ></span>
-                    <span className="fw-600 text-dark">Expenses: ₹24,900</span>
+                    <span className="fw-600 text-dark">Expenses: ₹{Number(ive.totalExpenses || 0).toLocaleString("en-IN")}</span>
                   </span>
                 </div>
               </div>
@@ -470,9 +572,14 @@ export default function Dashboard() {
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div>
                 <h5 className="ms-card-title mb-0">Expense Categories</h5>
-                <p className="text-muted fs-11px mb-0">Breakdown of ₹20,500 total spending</p>
+                <p className="text-muted fs-11px mb-0">Breakdown of ₹{expTotal.toLocaleString("en-IN")} total spending</p>
               </div>
 
+              {donutSeries.length === 0 ? (
+                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 230 }}>
+                  No expense data to show yet.
+                </div>
+              ) : (
               <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
                 <div style={{ width: "210px", height: "230px" }}>
                   <Chart
@@ -505,6 +612,7 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
@@ -523,8 +631,11 @@ export default function Dashboard() {
                   <h5 className="ms-card-title mb-0">Budget Overview</h5>
                   <p className="text-muted fs-11px mb-0">Monthly budget consumption</p>
                 </div>
-                <Badge bg="success-subtle" className="text-success fw-700 fs-10px py-1 px-2 rounded-6px">
-                  On Track
+                <Badge
+                  bg={budgetSummary.pct > 100 ? "danger-subtle" : "success-subtle"}
+                  className={`fw-700 fs-10px py-1 px-2 rounded-6px ${budgetSummary.pct > 100 ? "text-danger" : "text-success"}`}
+                >
+                  {budgetSummary.pct > 100 ? "Over Budget" : "On Track"}
                 </Badge>
               </div>
 
@@ -533,25 +644,25 @@ export default function Dashboard() {
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
                     <div className="ms-mini-label">Monthly Limit</div>
-                    <div className="ms-budget-main-val">₹30,000</div>
+                    <div className="ms-budget-main-val">₹{budgetSummary.limit.toLocaleString("en-IN")}</div>
                   </div>
                   <div className="text-center">
                     <div className="ms-mini-label">Spent so far</div>
-                    <div className="ms-budget-used-val">₹20,500</div>
+                    <div className="ms-budget-used-val">₹{budgetSummary.spent.toLocaleString("en-IN")}</div>
                   </div>
                   <div className="text-end">
                     <div className="ms-mini-label">Available</div>
-                    <div className="ms-budget-rem-val">₹9,500</div>
+                    <div className="ms-budget-rem-val">₹{budgetSummary.available.toLocaleString("en-IN")}</div>
                   </div>
                 </div>
 
                 <div className="mt-2">
                   <div className="d-flex justify-content-between mb-1">
                     <span className="text-muted fw-600 fs-11px">Total Spent</span>
-                    <span className="fw-800 text-primary fs-11px">68%</span>
+                    <span className="fw-800 text-primary fs-11px">{budgetSummary.pct}%</span>
                   </div>
                   <ProgressBar
-                    now={68}
+                    now={Math.min(100, budgetSummary.pct)}
                     className="ms-progress-blue"
                     style={{ height: "8px" }}
                   />
@@ -562,117 +673,40 @@ export default function Dashboard() {
               <div>
                 <div className="ms-cat-budget-heading mb-2">Category Allocations</div>
                 <div className="d-flex flex-column gap-2">
-
-                  {/* Food & Dining */}
-                  <div className="ms-cat-alloc-card">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#f5f3ff", color: "#8b5cf6" }}>
-                          <FiCoffee size={14} />
-                        </div>
-                        <div>
-                          <div className="ms-cat-name">Food &amp; Dining</div>
-                          <div className="ms-cat-amount-info">₹4,400 <span className="text-muted">of ₹6,000</span></div>
-                        </div>
-                      </div>
-                      <div className="text-end">
-                        <div className="ms-cat-percent" style={{ color: "#8b5cf6" }}>73%</div>
-                        <span className="ms-cat-status-badge warning">Warning</span>
-                      </div>
+                  {categoryAllocations.length === 0 ? (
+                    <div className="text-muted fs-12px py-2 text-center">
+                      No category budgets set yet.
                     </div>
-                    <div className="ms-cat-progress-track">
-                      <div className="ms-cat-progress-fill" style={{ width: "73%", background: "linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%)" }}></div>
-                    </div>
-                  </div>
-
-                  {/* Housing & Rent */}
-                  <div className="ms-cat-alloc-card">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#eef2ff", color: "#4f46e5" }}>
-                          <FiHome size={14} />
+                  ) : (
+                    categoryAllocations.map((cat, idx) => (
+                      <div className="ms-cat-alloc-card" key={idx}>
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="ms-cat-icon-box" style={{ backgroundColor: cat.bg, color: cat.color }}>
+                              {cat.icon}
+                            </div>
+                            <div>
+                              <div className="ms-cat-name">{cat.name}</div>
+                              <div className="ms-cat-amount-info">
+                                ₹{cat.spent.toLocaleString("en-IN")}{" "}
+                                <span className="text-muted">of ₹{cat.allocated.toLocaleString("en-IN")}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-end">
+                            <div className="ms-cat-percent" style={{ color: cat.percentColor }}>{cat.pct}%</div>
+                            <span className={`ms-cat-status-badge ${cat.statusClass}`}>{cat.statusLabel}</span>
+                          </div>
                         </div>
-                        <div>
-                          <div className="ms-cat-name">Housing &amp; Rent</div>
-                          <div className="ms-cat-amount-info">₹8,000 <span className="text-muted">of ₹10,000</span></div>
+                        <div className="ms-cat-progress-track">
+                          <div
+                            className="ms-cat-progress-fill"
+                            style={{ width: `${Math.min(100, cat.pct)}%`, background: cat.gradient }}
+                          ></div>
                         </div>
                       </div>
-                      <div className="text-end">
-                        <div className="ms-cat-percent" style={{ color: "#ef4444" }}>80%</div>
-                        <span className="ms-cat-status-badge danger">Over Limit</span>
-                      </div>
-                    </div>
-                    <div className="ms-cat-progress-track">
-                      <div className="ms-cat-progress-fill" style={{ width: "80%", background: "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)" }}></div>
-                    </div>
-                  </div>
-
-                  {/* Transportation */}
-                  <div className="ms-cat-alloc-card">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#fffbeb", color: "#d97706" }}>
-                          <FiArrowRight size={14} />
-                        </div>
-                        <div>
-                          <div className="ms-cat-name">Transportation</div>
-                          <div className="ms-cat-amount-info">₹2,250 <span className="text-muted">of ₹4,000</span></div>
-                        </div>
-                      </div>
-                      <div className="text-end">
-                        <div className="ms-cat-percent" style={{ color: "#d97706" }}>56%</div>
-                        <span className="ms-cat-status-badge success">On Track</span>
-                      </div>
-                    </div>
-                    <div className="ms-cat-progress-track">
-                      <div className="ms-cat-progress-fill" style={{ width: "56%", background: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)" }}></div>
-                    </div>
-                  </div>
-
-                  {/* Shopping & Retail */}
-                  <div className="ms-cat-alloc-card">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#ecfdf5", color: "#059669" }}>
-                          <FiShoppingBag size={14} />
-                        </div>
-                        <div>
-                          <div className="ms-cat-name">Shopping &amp; Retail</div>
-                          <div className="ms-cat-amount-info">₹1,850 <span className="text-muted">of ₹3,000</span></div>
-                        </div>
-                      </div>
-                      <div className="text-end">
-                        <div className="ms-cat-percent" style={{ color: "#059669" }}>61%</div>
-                        <span className="ms-cat-status-badge success">On Track</span>
-                      </div>
-                    </div>
-                    <div className="ms-cat-progress-track">
-                      <div className="ms-cat-progress-fill" style={{ width: "61%", background: "linear-gradient(90deg, #10b981 0%, #34d399 100%)" }}></div>
-                    </div>
-                  </div>
-
-                  {/* Utilities & Bills */}
-                  <div className="ms-cat-alloc-card">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="ms-cat-icon-box" style={{ backgroundColor: "#ecfeff", color: "#0891b2" }}>
-                          <FiZap size={14} />
-                        </div>
-                        <div>
-                          <div className="ms-cat-name">Utilities &amp; Bills</div>
-                          <div className="ms-cat-amount-info">₹2,200 <span className="text-muted">of ₹4,000</span></div>
-                        </div>
-                      </div>
-                      <div className="text-end">
-                        <div className="ms-cat-percent" style={{ color: "#0891b2" }}>55%</div>
-                        <span className="ms-cat-status-badge success">On Track</span>
-                      </div>
-                    </div>
-                    <div className="ms-cat-progress-track">
-                      <div className="ms-cat-progress-fill" style={{ width: "55%", background: "linear-gradient(90deg, #06b6d4 0%, #22d3ee 100%)" }}></div>
-                    </div>
-                  </div>
-
+                    ))
+                  )}
                 </div>
               </div>
             </Card.Body>
@@ -703,6 +737,11 @@ export default function Dashboard() {
 
                 {/* Goals Cards List */}
                 <div className="d-flex flex-column gap-2">
+                  {savingsGoals.length === 0 && (
+                    <div className="text-center text-muted fs-12px py-4">
+                      No savings goals yet. Create one to start tracking.
+                    </div>
+                  )}
                   {savingsGoals.map((goal, idx) => (
                     <div key={idx} className="ms-goal-card p-2 px-3 rounded-10px">
                       <div className="d-flex justify-content-between align-items-start mb-1">
@@ -760,7 +799,8 @@ export default function Dashboard() {
 
               <div className="pt-2 text-center border-top mt-2">
                 <span className="text-muted fs-11px">
-                  🚀 Total Saved: <strong className="text-dark">₹88,000</strong> of ₹1,70,000 (52% overall)
+                  🚀 Total Saved: <strong className="text-dark">₹{totalSaved.toLocaleString("en-IN")}</strong> of ₹{totalTarget.toLocaleString("en-IN")}
+                  {totalTarget ? ` (${Math.round((totalSaved / totalTarget) * 100)}% overall)` : ""}
                 </span>
               </div>
             </Card.Body>
@@ -770,7 +810,10 @@ export default function Dashboard() {
 
       {/* ===================================================================
           PAIR 3: CLEAN 4-COLUMN RECENT TRANSACTIONS & UPCOMING PAYMENTS
+          (hidden — static mock content)
           =================================================================== */}
+      {/* eslint-disable-next-line no-constant-binary-expression */}
+      {false && (
       <Row className="g-3">
         {/* Clean Recent Transactions Table */}
         <Col xs={12} lg={7}>
@@ -982,6 +1025,167 @@ export default function Dashboard() {
           </div>
         </Col>
       </Row>
+      )}
+
+      {/* ===================================================================
+          QUICK ADD: INCOME MODAL
+          =================================================================== */}
+      <Modal show={showIncomeModal} onHide={() => setShowIncomeModal(false)} centered size="md" className="ur-modal">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <div>
+            <Modal.Title className="fw-700 fs-16px text-dark d-flex align-items-center gap-2">
+              <span className="ur-modal-icon income"><FiPlus size={16} /></span>
+              Add Income
+            </Modal.Title>
+            <p className="text-muted fs-11.5px mb-0">Quickly record an income entry.</p>
+          </div>
+        </Modal.Header>
+        <Form onSubmit={handleSaveIncome}>
+          <Modal.Body className="py-3">
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Income Source / Payer *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                placeholder="e.g. TechCorp India Pvt Ltd"
+                value={incomeForm.source}
+                onChange={(e) => setIncomeForm({ ...incomeForm, source: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Category *</Form.Label>
+              <Select
+                value={INCOME_CATEGORIES.find((o) => o.value === incomeForm.category)}
+                onChange={(opt) => setIncomeForm({ ...incomeForm, category: opt.value })}
+                options={INCOME_CATEGORIES}
+                styles={formSelectStyles}
+                menuPortalTarget={document.body}
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+              <Form.Control
+                type="number"
+                required
+                min="1"
+                step="any"
+                placeholder="e.g. 50000"
+                value={incomeForm.amount}
+                onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })}
+                className="ur-form-input fw-700 text-success"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Date</Form.Label>
+              <Form.Control
+                type="date"
+                value={incomeForm.date}
+                onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Description / Work Scope</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="e.g. Monthly salary payout"
+                value={incomeForm.description}
+                onChange={(e) => setIncomeForm({ ...incomeForm, description: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-0 pt-0">
+            <Button variant="light" size="sm" onClick={() => setShowIncomeModal(false)} className="rounded-6px px-3">
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" className="ms-btn-income px-4" disabled={savingIncome}>
+              <FiPlus size={14} /> {savingIncome ? "Saving..." : "Save Income"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* ===================================================================
+          QUICK ADD: EXPENSE MODAL
+          =================================================================== */}
+      <Modal show={showExpenseModal} onHide={() => setShowExpenseModal(false)} centered size="md" className="ur-modal">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <div>
+            <Modal.Title className="fw-700 fs-16px text-dark d-flex align-items-center gap-2">
+              <span className="ur-modal-icon"><FiMinus size={16} /></span>
+              Add Expense
+            </Modal.Title>
+            <p className="text-muted fs-11.5px mb-0">Quickly record an outgoing payment.</p>
+          </div>
+        </Modal.Header>
+        <Form onSubmit={handleSaveExpense}>
+          <Modal.Body className="py-3">
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Merchant / Payee Name *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                placeholder="e.g. Swiggy Instamart / Amazon"
+                value={expenseForm.merchant}
+                onChange={(e) => setExpenseForm({ ...expenseForm, merchant: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Category *</Form.Label>
+              <Select
+                value={EXPENSE_CATEGORIES.find((o) => o.value === expenseForm.category)}
+                onChange={(opt) => setExpenseForm({ ...expenseForm, category: opt.value })}
+                options={EXPENSE_CATEGORIES}
+                styles={formSelectStyles}
+                menuPortalTarget={document.body}
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+              <Form.Control
+                type="number"
+                required
+                min="1"
+                step="any"
+                placeholder="e.g. 2500"
+                value={expenseForm.amount}
+                onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                className="ur-form-input fw-700 text-danger"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Date</Form.Label>
+              <Form.Control
+                type="date"
+                value={expenseForm.date}
+                onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label className="ur-form-label">Description / Note</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="e.g. Monthly grocery supplies"
+                value={expenseForm.description}
+                onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                className="ur-form-input"
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer className="border-0 pt-0">
+            <Button variant="light" size="sm" onClick={() => setShowExpenseModal(false)} className="rounded-6px px-3">
+              Cancel
+            </Button>
+            <Button type="submit" variant="danger" size="sm" className="ms-btn-expense px-4" disabled={savingExpense}>
+              <FiMinus size={14} /> {savingExpense ? "Saving..." : "Save Expense"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </Container>
   );
 }

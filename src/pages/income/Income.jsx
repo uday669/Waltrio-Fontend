@@ -59,22 +59,53 @@ const CATEGORIES = [
   { label: "Investments", value: "Investments", color: "#14b8a6", bg: "#f0fdfa" },
   { label: "Digital Products", value: "Digital Products", color: "#ec4899", bg: "#fdf2f8" },
   { label: "Bonus", value: "Bonus", color: "#e11d48", bg: "#ffe4e6" },
+  { label: "Other", value: "Other", color: "#64748b", bg: "#f1f5f9" },
 ];
 
 export default function Income() {
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("monthly");
+  // Server-side period filter for GET /incomes:
+  //   "current" -> no params (backend defaults to current month)
+  //   "all"     -> ?all=true
+  //   "YYYY-M"  -> ?month=M&year=YYYY
+  const [selectedPeriod, setSelectedPeriod] = useState("current");
+
+  // Period dropdown options: This Month, All Time, then the last 11 months.
+  const periodOptions = useMemo(() => {
+    const opts = [
+      { value: "current", label: "This Month" },
+      { value: "all", label: "All Time" },
+    ];
+    const now = new Date();
+    for (let k = 1; k <= 11; k++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+      opts.push({
+        value: `${d.getFullYear()}-${d.getMonth() + 1}`,
+        label: d.toLocaleString("en-US", { month: "long", year: "numeric" }),
+      });
+    }
+    return opts;
+  }, []);
+
+  // Translate the selected period into GET /incomes query params.
+  const periodParams = useMemo(() => {
+    if (selectedPeriod === "all") return { all: true };
+    if (selectedPeriod === "current") return {};
+    const [year, month] = selectedPeriod.split("-").map(Number);
+    return { month, year };
+  }, [selectedPeriod]);
 
   // ---- Server data (TanStack Query) -------------------------------------
-  // GET /incomes — full list (server-side filters passed as params).
+  // GET /incomes — full list (period + filters passed as params).
   const {
     data: incomesData,
     isLoading: incomesLoading,
     isError: incomesIsError,
     error: incomesErr,
-  } = useIncomes({ category: selectedCategory, status: selectedStatus });
+  } = useIncomes({ ...periodParams, category: selectedCategory, status: selectedStatus });
 
   // Surface a real API/auth failure instead of a silent empty table.
   React.useEffect(() => {
@@ -888,7 +919,7 @@ export default function Income() {
         keyField="id"
         loading={incomesLoading}
         title="All Income Transactions"
-        subtitle={`Showing ${tableData.length} verified income logs`}
+        subtitle={`${periodOptions.find((p) => p.value === selectedPeriod)?.label || "This Month"} • ${tableData.length} income log(s)`}
         searchPlaceholder="Search by payer, source, or reference..."
         selectableRows={true}
         initialSortField="date"
@@ -898,28 +929,20 @@ export default function Income() {
         exportFileName="Income_Statements"
         filters={
           <div className="ur-inline-filters">
+            {/* Period Filter — GET /incomes?month=&year= | ?all=true | (default current month) */}
+            <Select
+              value={periodOptions.find((p) => p.value === selectedPeriod)}
+              onChange={(opt) => setSelectedPeriod(opt ? opt.value : "current")}
+              options={periodOptions}
+              styles={filterSelectStyles}
+              isSearchable={false}
+            />
+
             {/* Category Filter */}
             <Select
               value={CATEGORIES.map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === selectedCategory)}
               onChange={(opt) => setSelectedCategory(opt ? opt.value : "all")}
               options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
-              styles={filterSelectStyles}
-              isSearchable={false}
-            />
-
-            {/* Status Filter */}
-            <Select
-              value={[
-                { value: "all", label: "All Statuses" },
-                { value: "Received", label: "Received" },
-                { value: "Pending", label: "Pending" },
-              ].find((s) => s.value === selectedStatus)}
-              onChange={(opt) => setSelectedStatus(opt ? opt.value : "all")}
-              options={[
-                { value: "all", label: "All Statuses" },
-                { value: "Received", label: "Received" },
-                { value: "Pending", label: "Pending" },
-              ]}
               styles={filterSelectStyles}
               isSearchable={false}
             />
@@ -975,7 +998,7 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
                   <Form.Control
@@ -991,34 +1014,7 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Deposited To Account *</Form.Label>
-                  <Select
-                    value={[
-                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "SBI Bank •••• 1109", label: "SBI Bank •••• 1109" },
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay UPI", label: "GPay UPI" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ].find((a) => a.value === formData.account)}
-                    onChange={(opt) => setFormData({ ...formData, account: opt.value })}
-                    options={[
-                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "SBI Bank •••• 1109", label: "SBI Bank •••• 1109" },
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay UPI", label: "GPay UPI" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
                   <Form.Control
@@ -1026,25 +1022,6 @@ export default function Income() {
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     className="ur-form-input"
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Status</Form.Label>
-                  <Select
-                    value={[
-                      { value: "Received", label: "Received" },
-                      { value: "Pending", label: "Pending" },
-                    ].find((s) => s.value === formData.status)}
-                    onChange={(opt) => setFormData({ ...formData, status: opt.value })}
-                    options={[
-                      { value: "Received", label: "Received" },
-                      { value: "Pending", label: "Pending" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
                   />
                 </Form.Group>
               </Col>
@@ -1179,7 +1156,7 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
                   <Form.Control
@@ -1194,34 +1171,7 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Account</Form.Label>
-                  <Select
-                    value={[
-                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "SBI Bank •••• 1109", label: "SBI Bank •••• 1109" },
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay UPI", label: "GPay UPI" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ].find((a) => a.value === formData.account)}
-                    onChange={(opt) => setFormData({ ...formData, account: opt.value })}
-                    options={[
-                      { value: "HDFC Bank •••• 4091", label: "HDFC Bank •••• 4091" },
-                      { value: "ICICI Bank •••• 9821", label: "ICICI Bank •••• 9821" },
-                      { value: "SBI Bank •••• 1109", label: "SBI Bank •••• 1109" },
-                      { value: "PhonePe UPI", label: "PhonePe UPI" },
-                      { value: "GPay UPI", label: "GPay UPI" },
-                      { value: "Cash in Hand", label: "Cash in Hand" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
+              <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
                   <Form.Control
@@ -1229,25 +1179,6 @@ export default function Income() {
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     className="ur-form-input"
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col xs={12} md={6}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Status</Form.Label>
-                  <Select
-                    value={[
-                      { value: "Received", label: "Received" },
-                      { value: "Pending", label: "Pending" },
-                    ].find((s) => s.value === formData.status)}
-                    onChange={(opt) => setFormData({ ...formData, status: opt.value })}
-                    options={[
-                      { value: "Received", label: "Received" },
-                      { value: "Pending", label: "Pending" },
-                    ]}
-                    styles={formSelectStyles}
-                    menuPortalTarget={document.body}
                   />
                 </Form.Group>
               </Col>

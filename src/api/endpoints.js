@@ -15,4 +15,20 @@ export const ENDPOINTS = {
     create: "/incomes",
     byId: (id) => `/incomes/${id}`,
   },
+  expenses: {
+    list: "/expenses",
+    summary: "/expenses/summary",
+    analytics: "/expenses/analytics",
+    create: "/expenses",
+    byId: (id) => `/expenses/${id}`,
+  },
+  dashboard: {
+    overview: "/dashboard/overview",
+    totalBalance: "/dashboard/total-balance",
+  },
+  budget: {
+    // Whole budgets page (cards + chart + caps). POST/PUT here upsert a cap.
+    category: "/budget/category",
+    categoryById: (id) => `/budget/category/${id}`,
+  },
 };
