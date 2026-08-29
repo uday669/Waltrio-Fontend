@@ -37,13 +37,13 @@ export default function Header({ onToggleSidebar }) {
         </button> */}
 
         {/* Add Transaction Button */}
-        <Button
+        {/* <Button
           className="btn-add-transaction border-0"
           onClick={() => navigate("/transactions")}
         >
           <FiPlus size={13} />
           <span className="d-none d-sm-inline">Add Transaction</span>
-        </Button>
+        </Button> */}
       </div>
     </header>
   );
