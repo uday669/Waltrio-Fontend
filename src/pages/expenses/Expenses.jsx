@@ -57,7 +57,7 @@ const EXPENSE_CATEGORIES = [
   { label: "All Categories", value: "all", color: "#64748b" },
   { label: "Housing", value: "Housing", color: "#4f46e5", bg: "#eef2ff", icon: <FiHome size={14} /> },
   { label: "Food & Dining", value: "Food & Dining", color: "#8b5cf6", bg: "#f5f3ff", icon: <FiCoffee size={14} /> },
-  { label: "Transportation", value: "Transportation", color: "#f59e0b", bg: "#fffbeb", icon: <FiTrendingUp size={14} /> },
+  { label: "Transport", value: "Transport", color: "#f59e0b", bg: "#fffbeb", icon: <FiTrendingUp size={14} /> },
   { label: "Shopping", value: "Shopping", color: "#ec4899", bg: "#fdf2f8", icon: <FiShoppingBag size={14} /> },
   { label: "Utilities", value: "Utilities", color: "#06b6d4", bg: "#ecfeff", icon: <FiZap size={14} /> },
   { label: "Healthcare", value: "Healthcare", color: "#ef4444", bg: "#fff1f2", icon: <FiShield size={14} /> },
