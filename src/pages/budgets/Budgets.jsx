@@ -42,7 +42,7 @@ import { toast } from "../../lib/toast";
 
 // Per-category visuals (icon + colors) attached to each server record.
 const CATEGORY_META = {
-  "Housing & Rent": { icon: <FiHome size={15} />, color: "#4f46e5", bg: "#eef2ff" },
+  "Housing": { icon: <FiHome size={15} />, color: "#4f46e5", bg: "#eef2ff" },
   "Food & Dining": { icon: <FiCoffee size={15} />, color: "#8b5cf6", bg: "#f5f3ff" },
   "Transportation & Fuel": { icon: <FiTrendingUp size={15} />, color: "#f59e0b", bg: "#fffbeb" },
   "Shopping & Retail": { icon: <FiShoppingBag size={15} />, color: "#ec4899", bg: "#fdf2f8" },
@@ -600,7 +600,7 @@ export default function Budgets() {
               <Select
                 value={[
                   { value: "Food & Dining", label: "Food & Dining" },
-                  { value: "Housing & Rent", label: "Housing & Rent" },
+                  { value: "Housing", label: "Housing & Rent" },
                   { value: "Transportation & Fuel", label: "Transportation & Fuel" },
                   { value: "Shopping & Retail", label: "Shopping & Retail" },
                   { value: "Utilities & Bills", label: "Utilities & Bills" },
@@ -612,7 +612,7 @@ export default function Budgets() {
                 onChange={(opt) => setFormData({ ...formData, category: opt.value })}
                 options={[
                   { value: "Food & Dining", label: "Food & Dining" },
-                  { value: "Housing & Rent", label: "Housing & Rent" },
+                  { value: "Housing", label: "Housing & Rent" },
                   { value: "Transportation & Fuel", label: "Transportation & Fuel" },
                   { value: "Shopping & Retail", label: "Shopping & Retail" },
                   { value: "Utilities & Bills", label: "Utilities & Bills" },
