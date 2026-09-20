@@ -107,8 +107,13 @@ export default function CommonDataTable({
   
   // Pagination Configuration
   pagination = true,
+  serverPagination = false,
+  page = undefined,
   pageSizeOptions = [5, 10, 20, 50],
   defaultPageSize = 10,
+  totalRows = undefined,
+  onPageChange = null,
+  onPageSizeChange = null,
   
   // Empty State Message
   emptyMessage = "No matching records found.",
@@ -190,17 +195,34 @@ export default function CommonDataTable({
   }, [filteredData, sortField, sortOrder, columns]);
 
   // ---------------------------------------------------------------------------
-  // 3. Client-Side Pagination
+  // 3. Client & Server-Side Pagination
   // ---------------------------------------------------------------------------
-  const totalItems = sortedData.length;
-  const totalPages = pagination ? Math.max(1, Math.ceil(totalItems / pageSize)) : 1;
-  const validCurrentPage = Math.min(currentPage, totalPages);
+  const isServerPaged = Boolean(serverPagination || onPageChange != null || totalRows !== undefined);
+  const totalItems = totalRows !== undefined ? totalRows : (data?.total ?? (data?.pagination?.total ?? sortedData.length));
+  const totalPages = pagination
+    ? Math.max(1, data?.totalPages ?? data?.pagination?.totalPages ?? Math.ceil(totalItems / pageSize))
+    : 1;
+  const validCurrentPage = page !== undefined ? page : Math.max(1, Math.min(currentPage, totalPages));
+
+  // Reset or adjust current page when data or search changes
+  React.useEffect(() => {
+    if (page === undefined && currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage, page]);
+
+  const goToPage = (pageNumber) => {
+    const target = Math.max(1, Math.min(totalPages, pageNumber));
+    setCurrentPage(target);
+    onPageChange?.(target);
+  };
 
   const paginatedData = useMemo(() => {
     if (!pagination) return sortedData;
+    if (isServerPaged) return sortedData;
     const start = (validCurrentPage - 1) * pageSize;
     return sortedData.slice(start, start + pageSize);
-  }, [sortedData, validCurrentPage, pageSize, pagination]);
+  }, [sortedData, validCurrentPage, pageSize, pagination, isServerPaged]);
 
   // Toggle Column Sort
   const handleSort = (field, sortable = true) => {
@@ -299,7 +321,10 @@ export default function CommonDataTable({
   };
 
   const startEntry = totalItems === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
-  const endEntry = Math.min(validCurrentPage * pageSize, totalItems);
+  const endEntry = isServerPaged
+    ? Math.min((validCurrentPage - 1) * pageSize + sortedData.length, totalItems)
+    : Math.min(validCurrentPage * pageSize, totalItems);
+
 
   // ---------------------------------------------------------------------------
   // TABLE CORE CONTENT
@@ -568,8 +593,10 @@ export default function CommonDataTable({
                 size="sm"
                 value={pageSize}
                 onChange={(e) => {
-                  setPageSize(Number(e.target.value));
+                  const newSize = Number(e.target.value);
+                  setPageSize(newSize);
                   setCurrentPage(1);
+                  onPageSizeChange?.(newSize);
                 }}
                 className="ur-pagesize-select"
               >
@@ -588,7 +615,7 @@ export default function CommonDataTable({
               variant="light"
               size="sm"
               disabled={validCurrentPage <= 1}
-              onClick={() => setCurrentPage(1)}
+              onClick={() => goToPage(1)}
               className="ur-page-nav-btn"
               title="First Page"
             >
@@ -599,7 +626,7 @@ export default function CommonDataTable({
               variant="light"
               size="sm"
               disabled={validCurrentPage <= 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              onClick={() => goToPage(validCurrentPage - 1)}
               className="ur-page-nav-btn"
               title="Previous Page"
             >
@@ -620,7 +647,7 @@ export default function CommonDataTable({
                     <Button
                       variant={validCurrentPage === p ? "primary" : "light"}
                       size="sm"
-                      onClick={() => setCurrentPage(p)}
+                      onClick={() => goToPage(p)}
                       className={`ur-page-number-btn ${validCurrentPage === p ? "active" : ""}`}
                     >
                       {p}
@@ -633,7 +660,7 @@ export default function CommonDataTable({
               variant="light"
               size="sm"
               disabled={validCurrentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => goToPage(validCurrentPage + 1)}
               className="ur-page-nav-btn"
               title="Next Page"
             >
@@ -644,7 +671,7 @@ export default function CommonDataTable({
               variant="light"
               size="sm"
               disabled={validCurrentPage >= totalPages}
-              onClick={() => setCurrentPage(totalPages)}
+              onClick={() => goToPage(totalPages)}
               className="ur-page-nav-btn"
               title="Last Page"
             >

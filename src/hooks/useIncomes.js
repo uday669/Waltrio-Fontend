@@ -26,13 +26,13 @@ export function unwrap(res) {
 }
 
 // Always hand the UI an array, whatever the list endpoint wraps it in.
-// Handles: [...], {data:[...]}, {data:{incomes:[...]}}, {data:{docs:[...]}}, etc.
+// Handles: [...], {data:[...]}, {data:{incomes:[...]}}, {data:{expenses:[...]}}, etc.
 export function toList(res) {
   if (Array.isArray(res)) return res;
   if (!res || typeof res !== "object") return [];
 
   // Named array properties we prefer, checked at any depth.
-  const PREFERRED = ["incomes", "items", "docs", "rows", "results", "records", "list", "data"];
+  const PREFERRED = ["incomes", "expenses", "items", "docs", "rows", "results", "records", "list", "Data", "data"];
   const seen = new Set();
   const walk = (obj) => {
     if (!obj || typeof obj !== "object" || seen.has(obj)) return null;
@@ -44,7 +44,7 @@ export function toList(res) {
     for (const value of Object.values(obj)) {
       if (Array.isArray(value)) return value;
     }
-    // Recurse into nested objects (e.g. data -> incomes).
+    // Recurse into nested objects (e.g. data -> incomes / expenses).
     for (const value of Object.values(obj)) {
       if (value && typeof value === "object") {
         const found = walk(value);
@@ -55,6 +55,64 @@ export function toList(res) {
   };
   return walk(res) || [];
 }
+
+/**
+ * Extract pagination metadata (page, limit, total, totalPages) if returned by the backend.
+ */
+export function extractPagination(res) {
+  if (!res || typeof res !== "object") return null;
+
+  const p = res.pagination || res.meta || res.pageInfo || res.data?.pagination || res.Data?.pagination || null;
+
+  const total =
+    p?.total ??
+    p?.totalDocs ??
+    p?.totalCount ??
+    p?.count ??
+    res.total ??
+    res.totalDocs ??
+    res.totalCount ??
+    res.count ??
+    res.data?.total ??
+    res.Data?.total ??
+    null;
+
+  const page =
+    p?.page ??
+    p?.currentPage ??
+    res.page ??
+    res.currentPage ??
+    res.data?.page ??
+    res.Data?.page ??
+    1;
+
+  const limit =
+    p?.limit ??
+    p?.pageSize ??
+    p?.perPage ??
+    res.limit ??
+    res.pageSize ??
+    res.perPage ??
+    res.data?.limit ??
+    res.Data?.limit ??
+    10;
+
+  const totalPages =
+    p?.totalPages ??
+    p?.pages ??
+    p?.pageCount ??
+    res.totalPages ??
+    res.pages ??
+    (total != null ? Math.ceil(Number(total) / Number(limit)) : null);
+
+  return {
+    total: total != null ? Number(total) : null,
+    totalPages: totalPages != null ? Number(totalPages) : null,
+    page: Number(page),
+    limit: Number(limit),
+  };
+}
+
 
 // Map a backend income record to the field names the UI expects.
 // Backend: { _id, incomeSource, amount, category, date, description, attachment, ... }
@@ -83,7 +141,18 @@ export function useIncomes(params = {}, options = {}) {
   return useQuery({
     queryKey: [...INCOMES_KEY, "list", params],
     queryFn: () => getIncomes(params),
-    select: (res) => toList(res).map(normalizeIncome),
+    select: (res) => {
+      const items = toList(res).map(normalizeIncome);
+      const pagination = extractPagination(res);
+      if (pagination && pagination.total != null) {
+        items.total = pagination.total;
+        items.totalPages = pagination.totalPages;
+        items.page = pagination.page;
+        items.limit = pagination.limit;
+        items.pagination = pagination;
+      }
+      return items;
+    },
     ...options,
   });
 }

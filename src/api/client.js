@@ -17,10 +17,28 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = "waltrio_token";
 
-// JWT auth token is persisted in a cookie (7 days) so it survives reloads.
-export const getToken = () => getCookie(TOKEN_KEY);
-export const setToken = (token, days = 7) => setCookie(TOKEN_KEY, token, days);
-export const clearToken = () => deleteCookie(TOKEN_KEY);
+// JWT auth token is persisted in a cookie and localStorage so it survives reloads.
+export const getToken = () => {
+  return getCookie(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || null;
+};
+export const setToken = (token, days = 7) => {
+  if (!token) return;
+  setCookie(TOKEN_KEY, token, days);
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // ignore
+  }
+};
+export const clearToken = () => {
+  deleteCookie(TOKEN_KEY);
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem("waltrio_user");
+  } catch {
+    // ignore
+  }
+};
 
 // Pull a human-readable message out of whatever shape the server returns.
 function parseMessage(data, fallback) {

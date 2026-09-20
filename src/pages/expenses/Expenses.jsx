@@ -72,6 +72,8 @@ export default function Expenses() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("weekly");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   // Server-side period filter for GET /expenses:
   //   "current" -> no params (backend defaults to current month)
   //   "all"     -> ?all=true
@@ -112,7 +114,13 @@ export default function Expenses() {
     isLoading: expensesLoading,
     isError: expensesIsError,
     error: expensesErr,
-  } = useExpenses({ ...periodParams, category: selectedCategory, status: selectedStatus });
+  } = useExpenses({
+    ...periodParams,
+    category: selectedCategory,
+    status: selectedStatus,
+    page,
+    limit,
+  });
 
   React.useEffect(() => {
     if (expensesIsError) {
@@ -122,6 +130,8 @@ export default function Expenses() {
   }, [expensesIsError, expensesErr]);
 
   const expenses = useMemo(() => expensesData || [], [expensesData]);
+  const totalCount = expensesData?.total ?? expensesData?.pagination?.total ?? expenses.length;
+
 
   const { data: summaryData } = useExpenseSummary();
   const { data: analyticsData } = useExpenseAnalytics({ range: timeRange });
@@ -827,12 +837,19 @@ export default function Expenses() {
         keyField="id"
         loading={expensesLoading}
         title="All Expense Logs"
-        subtitle={`${periodOptions.find((p) => p.value === selectedPeriod)?.label || "This Month"} • ${tableData.length} expense log(s)`}
+        subtitle={`${periodOptions.find((p) => p.value === selectedPeriod)?.label || "This Month"} • ${totalCount} expense log(s)`}
         searchPlaceholder="Search by merchant, note, or reference..."
         selectableRows={true}
         initialSortField="date"
         initialSortOrder="desc"
-        defaultPageSize={10}
+        defaultPageSize={limit}
+        totalRows={totalCount}
+        page={page}
+        onPageChange={(p) => setPage(p)}
+        onPageSizeChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
         onBulkDelete={handleBulkDelete}
         exportFileName="Expense_Statements"
         filters={
@@ -840,7 +857,10 @@ export default function Expenses() {
             {/* Period Filter — GET /expenses?month=&year= | ?all=true | (default current month) */}
             <Select
               value={periodOptions.find((p) => p.value === selectedPeriod)}
-              onChange={(opt) => setSelectedPeriod(opt ? opt.value : "current")}
+              onChange={(opt) => {
+                setSelectedPeriod(opt ? opt.value : "current");
+                setPage(1);
+              }}
               options={periodOptions}
               styles={filterSelectStyles}
               isSearchable={false}
@@ -849,7 +869,10 @@ export default function Expenses() {
             {/* Category Filter */}
             <Select
               value={EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === selectedCategory)}
-              onChange={(opt) => setSelectedCategory(opt ? opt.value : "all")}
+              onChange={(opt) => {
+                setSelectedCategory(opt ? opt.value : "all");
+                setPage(1);
+              }}
               options={EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
               styles={filterSelectStyles}
               isSearchable={false}

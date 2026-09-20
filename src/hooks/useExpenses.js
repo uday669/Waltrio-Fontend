@@ -9,7 +9,7 @@ import {
   updateExpense,
   deleteExpense,
 } from "../api/expenses.api";
-import { unwrap, toList } from "./useIncomes";
+import { unwrap, toList, extractPagination } from "./useIncomes";
 
 const EXPENSES_KEY = ["expenses"];
 
@@ -39,7 +39,18 @@ export function useExpenses(params = {}, options = {}) {
   return useQuery({
     queryKey: [...EXPENSES_KEY, "list", params],
     queryFn: () => getExpenses(params),
-    select: (res) => toList(res).map(normalizeExpense),
+    select: (res) => {
+      const items = toList(res).map(normalizeExpense);
+      const pagination = extractPagination(res);
+      if (pagination && pagination.total != null) {
+        items.total = pagination.total;
+        items.totalPages = pagination.totalPages;
+        items.page = pagination.page;
+        items.limit = pagination.limit;
+        items.pagination = pagination;
+      }
+      return items;
+    },
     ...options,
   });
 }

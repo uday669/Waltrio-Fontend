@@ -40,6 +40,8 @@ import { useCreateExpense } from "../../hooks/useExpenses";
 import { formSelectStyles } from "../../utils/selectStyles";
 import { toast } from "../../lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../../context/AuthContext";
+
 
 // Category options for the quick-add modals.
 const INCOME_CATEGORIES = ["Salary", "Freelance", "Rental", "Dividends", "Consulting", "Investments", "Digital Products", "Bonus", "Other"].map((c) => ({ value: c, label: c }));
@@ -70,6 +72,9 @@ const DEFAULT_BUDGET_META = { icon: <FiTarget size={14} />, color: "#4f46e5", bg
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { name, user } = useAuth();
+  const firstName = (name || user?.name || "User").split(" ")[0];
+
 
   // ---- Quick-add modals (Add Income / Add Expense) ----------------------
   const [showIncomeModal, setShowIncomeModal] = useState(false);
@@ -458,7 +463,7 @@ export default function Dashboard() {
       <div className="d-flex flex-md-row flex-column justify-content-between align-items-md-center align-items-start gap-2 mb-3">
         <div>
           <h1 className="ms-greeting-title mb-1">
-            Good Morning, Uday <span className="ms-greeting-emoji">👏</span>
+            Good Morning, {firstName} <span className="ms-greeting-emoji">👏</span>
           </h1>
           <p className="ms-greeting-subtitle mb-0">
             Here's your comprehensive financial overview for August 2026.

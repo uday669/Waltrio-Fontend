@@ -27,21 +27,38 @@ import {
 } from "react-icons/fi";
 import Select from "react-select";
 import { formSelectStyles } from "../../utils/selectStyles";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const { user, name, email } = useAuth();
 
   // Profile Form State
   const [profile, setProfile] = useState({
-    fullName: "Uday Waltrio",
-    email: "uday@waltro.com",
-    phone: "+91 98765 43210",
-    currency: "INR",
-    timezone: "Asia/Kolkata (IST +5:30)",
-    language: "English (US)",
-    dateFormat: "DD/MM/YYYY",
+    fullName: name || user?.name || "Uday Waltrio",
+    email: email || user?.email || "uday@waltro.com",
+    phone: user?.phone || "+91 98765 43210",
+    currency: user?.currency || "INR",
+    timezone: user?.timezone || "Asia/Kolkata (IST +5:30)",
+    language: user?.language || "English (US)",
+    dateFormat: user?.dateFormat || "DD/MM/YYYY",
   });
+
+  React.useEffect(() => {
+    if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        fullName: user.name || prev.fullName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        currency: user.currency || prev.currency,
+      }));
+    }
+  }, [user]);
+
+  const avatarInitial = (profile.fullName?.[0] || profile.email?.[0] || "U").toUpperCase();
+
 
   // Security State
   const [security, setSecurity] = useState({
@@ -141,7 +158,7 @@ export default function Settings() {
                           fontWeight: "800",
                         }}
                       >
-                        U
+                        {avatarInitial}
                       </div>
                       <div>
                         <h6 className="fw-700 text-dark mb-0">{profile.fullName}</h6>

@@ -29,3 +29,10 @@ export const resendOtp = ({ email }) =>
  */
 export const verifyOtp = ({ email, otp }) =>
   api.post(ENDPOINTS.auth.verifyOtp, { email, otp });
+
+/**
+ * Get the currently authenticated user profile.
+ * GET /v1/api/auth/me
+ */
+export const getMe = () => api.get(ENDPOINTS.auth.me);
+

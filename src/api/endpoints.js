@@ -7,6 +7,7 @@ export const ENDPOINTS = {
     login: "/auth/login",
     resendOtp: "/auth/resend-otp",
     verifyOtp: "/auth/verify-otp",
+    me: "/auth/me",
   },
   incomes: {
     list: "/incomes",

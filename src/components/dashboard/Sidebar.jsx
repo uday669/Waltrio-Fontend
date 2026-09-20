@@ -18,9 +18,16 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 import { IoWalletOutline } from "react-icons/io5";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
+  const { user, name, email, logout } = useAuth();
+
+  const displayName = name || user?.name || "User";
+  const displayEmail = email || user?.email || "";
+  const avatarInitial = (displayName ? displayName[0] : (displayEmail ? displayEmail[0] : "U")).toUpperCase();
+
 
   const navItems = [
     { name: "Dashboard", icon: <FiGrid size={18} />, path: "/dashboard" },
@@ -84,11 +91,12 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* Sidebar Footer: User Avatar + Name + Logout Icon Button */}
       <div className="ur-sidebar-footer p-3 border-top mt-auto">
         <div className="d-flex align-items-center justify-content-between">
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 overflow-hidden me-2">
             <div
               style={{
                 width: "34px",
                 height: "34px",
+                minWidth: "34px",
                 borderRadius: "50%",
                 backgroundColor: "#4f46e5",
                 color: "#ffffff",
@@ -99,21 +107,22 @@ export default function Sidebar({ isOpen, onClose }) {
                 fontSize: "13px",
               }}
             >
-              U
+              {avatarInitial}
             </div>
-            <div className="d-flex flex-column" style={{ lineHeight: "1.15" }}>
-              <span className="fw-700 text-dark fs-12.5px">Uday</span>
-              <span className="text-muted fs-10.5px">uday@waltro.com</span>
+            <div className="d-flex flex-column text-truncate" style={{ lineHeight: "1.15" }}>
+              <span className="fw-700 text-dark fs-12.5px text-truncate">{displayName}</span>
+              <span className="text-muted fs-10.5px text-truncate">{displayEmail}</span>
             </div>
           </div>
-          <Link
-            to="/login"
-            className="btn btn-light btn-sm p-1 rounded-6px text-danger"
+          <button
+            type="button"
+            onClick={logout}
+            className="btn btn-light btn-sm p-1 rounded-6px text-danger border-0"
             title="Log Out"
-            style={{ width: "30px", height: "30px", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ width: "30px", height: "30px", minWidth: "30px", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             <FiLogOut size={16} />
-          </Link>
+          </button>
         </div>
       </div>
     </aside>
