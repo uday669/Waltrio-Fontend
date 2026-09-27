@@ -17,16 +17,8 @@ import {
   FiCheckCircle,
   FiAlertTriangle,
   FiAlertCircle,
-  FiTrendingUp,
   FiTrendingDown,
   FiDollarSign,
-  FiCoffee,
-  FiHome,
-  FiShoppingBag,
-  FiZap,
-  FiActivity,
-  FiBook,
-  FiRefreshCw,
 } from "react-icons/fi";
 import Select from "react-select";
 import { formSelectStyles } from "../../utils/selectStyles";
@@ -39,24 +31,28 @@ import {
 } from "../../hooks/useBudgets";
 import { deleteBudgetCategory } from "../../api/budgets.api";
 import { toast } from "../../lib/toast";
-
-// Per-category visuals (icon + colors) attached to each server record.
-const CATEGORY_META = {
-  "Housing": { icon: <FiHome size={15} />, color: "#4f46e5", bg: "#eef2ff" },
-  "Food & Dining": { icon: <FiCoffee size={15} />, color: "#8b5cf6", bg: "#f5f3ff" },
-  "Transportation & Fuel": { icon: <FiTrendingUp size={15} />, color: "#f59e0b", bg: "#fffbeb" },
-  "Shopping & Retail": { icon: <FiShoppingBag size={15} />, color: "#ec4899", bg: "#fdf2f8" },
-  "Utilities & Bills": { icon: <FiZap size={15} />, color: "#06b6d4", bg: "#ecfeff" },
-  "Fitness & Wellness": { icon: <FiActivity size={15} />, color: "#10b981", bg: "#ecfdf5" },
-  Entertainment: { icon: <FiCoffee size={15} />, color: "#d97706", bg: "#fef3c7" },
-  Healthcare: { icon: <FiPieChart size={15} />, color: "#ef4444", bg: "#fff1f2" },
-  Education: { icon: <FiBook size={15} />, color: "#6366f1", bg: "#eef2ff" },
-};
-const DEFAULT_META = { icon: <FiPieChart size={15} />, color: "#4f46e5", bg: "#eef2ff" };
-const withVisuals = (b) => ({ ...b, ...(CATEGORY_META[b.category] || DEFAULT_META) });
+import { useCategories } from "../../context/CategoryContext";
 
 export default function Budgets() {
   const queryClient = useQueryClient();
+  const { expenseCategories, allCategories, getCategoryMeta } = useCategories();
+
+  // Categories available for setting budgets
+  const availableCategories = useMemo(() => {
+    if (expenseCategories && expenseCategories.length > 0) {
+      return expenseCategories;
+    }
+    return allCategories || [];
+  }, [expenseCategories, allCategories]);
+
+  // Dynamic Current Month & Year
+  const currentMonthYear = useMemo(() => {
+    return new Date().toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  }, []);
+
 
   // GET /budget/category — real caps (visuals attached client-side).
   const {
@@ -73,7 +69,17 @@ export default function Budgets() {
     }
   }, [budgetsIsError, budgetsErr]);
 
-  const budgets = useMemo(() => (budgetsData || []).map(withVisuals), [budgetsData]);
+  const budgets = useMemo(() => {
+    return (budgetsData || []).map((b) => {
+      const meta = getCategoryMeta(b.category, "expense");
+      return {
+        ...b,
+        icon: meta.icon,
+        color: meta.color,
+        bg: meta.bg,
+      };
+    });
+  }, [budgetsData, getCategoryMeta]);
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -83,11 +89,12 @@ export default function Budgets() {
 
   // Form State — only fields the API accepts.
   const [formData, setFormData] = useState({
-    category: "Food & Dining",
+    category: "",
     label: "",
     monthlyAmount: "",
     alertThreshold: "80",
   });
+
 
   // ---- Mutations --------------------------------------------------------
   // POST/PUT /budget/category (upsert) — used by both Add and Edit.
@@ -167,14 +174,16 @@ export default function Budgets() {
 
   // Open Add Modal
   const handleOpenAdd = () => {
+    const defaultCat = availableCategories[0]?.name || "";
     setFormData({
-      category: "Food & Dining",
-      label: "",
+      category: defaultCat,
+      label: defaultCat,
       monthlyAmount: "",
       alertThreshold: "80",
     });
     setShowAddModal(true);
   };
+
 
   // Save Add -> POST /budget/category (upsert)
   const handleSaveAdd = (e) => {
@@ -359,8 +368,9 @@ export default function Budgets() {
           <h1 className="ms-greeting-title mb-1 d-flex align-items-center gap-2">
             <span>Budget Planner &amp; Caps</span>
             <Badge bg="primary-subtle" className="text-primary fs-11px fw-700 py-1 px-2 rounded-6px">
-              August 2026
+              {currentMonthYear}
             </Badge>
+
           </h1>
           <p className="ms-greeting-subtitle mb-0">
             Set category spending limits, track consumption rates in real-time, and prevent budget overruns.
@@ -598,33 +608,26 @@ export default function Budgets() {
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Expense Category *</Form.Label>
               <Select
-                value={[
-                  { value: "Food & Dining", label: "Food & Dining" },
-                  { value: "Housing", label: "Housing & Rent" },
-                  { value: "Transportation & Fuel", label: "Transportation & Fuel" },
-                  { value: "Shopping & Retail", label: "Shopping & Retail" },
-                  { value: "Utilities & Bills", label: "Utilities & Bills" },
-                  { value: "Fitness & Wellness", label: "Fitness & Wellness" },
-                  { value: "Entertainment", label: "Entertainment" },
-                  { value: "Healthcare", label: "Healthcare" },
-                  { value: "Education", label: "Education" },
-                ].find((c) => c.value === formData.category)}
-                onChange={(opt) => setFormData({ ...formData, category: opt.value })}
-                options={[
-                  { value: "Food & Dining", label: "Food & Dining" },
-                  { value: "Housing", label: "Housing & Rent" },
-                  { value: "Transportation & Fuel", label: "Transportation & Fuel" },
-                  { value: "Shopping & Retail", label: "Shopping & Retail" },
-                  { value: "Utilities & Bills", label: "Utilities & Bills" },
-                  { value: "Fitness & Wellness", label: "Fitness & Wellness" },
-                  { value: "Entertainment", label: "Entertainment" },
-                  { value: "Healthcare", label: "Healthcare" },
-                  { value: "Education", label: "Education" },
-                ]}
+                value={
+                  availableCategories
+                    .map((c) => ({ value: c.name, label: c.name }))
+                    .find((c) => c.value === formData.category) ||
+                  (formData.category ? { value: formData.category, label: formData.category } : null)
+                }
+                onChange={(opt) =>
+                  setFormData({
+                    ...formData,
+                    category: opt ? opt.value : "",
+                    label: formData.label || (opt ? opt.value : ""),
+                  })
+                }
+                options={availableCategories.map((c) => ({ value: c.name, label: c.name }))}
+                placeholder="Select Category..."
                 styles={formSelectStyles}
                 menuPortalTarget={document.body}
               />
             </Form.Group>
+
 
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Budget Label *</Form.Label>

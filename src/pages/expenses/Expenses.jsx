@@ -51,24 +51,11 @@ import {
 } from "../../hooks/useExpenses";
 import { deleteExpense } from "../../api/expenses.api";
 import { toast } from "../../lib/toast";
-
-// Categories definition with badges & styling
-const EXPENSE_CATEGORIES = [
-  { label: "All Categories", value: "all", color: "#64748b" },
-  { label: "Housing", value: "Housing", color: "#4f46e5", bg: "#eef2ff", icon: <FiHome size={14} /> },
-  { label: "Food & Dining", value: "Food & Dining", color: "#8b5cf6", bg: "#f5f3ff", icon: <FiCoffee size={14} /> },
-  { label: "Transport", value: "Transport", color: "#f59e0b", bg: "#fffbeb", icon: <FiTrendingUp size={14} /> },
-  { label: "Shopping", value: "Shopping", color: "#ec4899", bg: "#fdf2f8", icon: <FiShoppingBag size={14} /> },
-  { label: "Utilities", value: "Utilities", color: "#06b6d4", bg: "#ecfeff", icon: <FiZap size={14} /> },
-  { label: "Healthcare", value: "Healthcare", color: "#ef4444", bg: "#fff1f2", icon: <FiShield size={14} /> },
-  { label: "Fitness & Wellness", value: "Fitness & Wellness", color: "#10b981", bg: "#ecfdf5", icon: <FiActivity size={14} /> },
-  { label: "Entertainment", value: "Entertainment", color: "#d97706", bg: "#fef3c7", icon: <FiCoffee size={14} /> },
-  { label: "Education", value: "Education", color: "#6366f1", bg: "#eef2ff", icon: <FiBook size={14} /> },
-  { label: "Other", value: "Other", color: "#64748b", bg: "#f1f5f9" },
-];
+import { useCategories } from "../../context/CategoryContext";
 
 export default function Expenses() {
   const queryClient = useQueryClient();
+  const { expenseCategories, getCategoryMeta } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("weekly");
@@ -308,7 +295,7 @@ export default function Expenses() {
       dItems = Object.entries(catMap)
         .sort((x, y) => y[1] - x[1])
         .map(([name, amount], i) => {
-          const cat = EXPENSE_CATEGORIES.find((c) => c.value === name);
+          const cat = getCategoryMeta(name, "expense");
           return { name, value: Math.round((amount / total) * 100), color: cat?.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length] };
         });
     }
@@ -397,7 +384,7 @@ export default function Expenses() {
     setFormData({
       merchant: "",
       description: "",
-      category: "Food & Dining",
+      category: expenseCategories[0]?.name || "Food & Dining",
       account: "PhonePe UPI",
       paymentMethod: "UPI Transfer",
       amount: "",
@@ -498,7 +485,7 @@ export default function Expenses() {
       sortable: true,
       minWidth: "250px",
       cell: (row) => {
-        const catInfo = EXPENSE_CATEGORIES.find((c) => c.value === row.category) || {};
+        const catInfo = getCategoryMeta(row.category, "expense");
         return (
           <div className="d-flex align-items-center gap-2">
             <div
@@ -523,7 +510,7 @@ export default function Expenses() {
       sortable: true,
       width: "150px",
       cell: (row) => {
-        const catInfo = EXPENSE_CATEGORIES.find((c) => c.value === row.category) || {};
+        const catInfo = getCategoryMeta(row.category, "expense");
         return (
           <span
             className="ur-category-badge"
@@ -868,12 +855,18 @@ export default function Expenses() {
 
             {/* Category Filter */}
             <Select
-              value={EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === selectedCategory)}
+              value={[
+                { value: "all", label: "All Categories" },
+                ...expenseCategories.map((c) => ({ value: c.name, label: c.name })),
+              ].find((c) => c.value === selectedCategory) || { value: "all", label: "All Categories" }}
               onChange={(opt) => {
                 setSelectedCategory(opt ? opt.value : "all");
                 setPage(1);
               }}
-              options={EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+              options={[
+                { value: "all", label: "All Categories" },
+                ...expenseCategories.map((c) => ({ value: c.name, label: c.name })),
+              ]}
               styles={filterSelectStyles}
               isSearchable={false}
             />
@@ -920,9 +913,9 @@ export default function Expenses() {
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Category *</Form.Label>
                   <Select
-                    value={EXPENSE_CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === formData.category)}
+                    value={expenseCategories.map((c) => ({ value: c.name, label: c.name })).find((c) => c.value === formData.category) || { value: formData.category, label: formData.category }}
                     onChange={(opt) => setFormData({ ...formData, category: opt.value })}
-                    options={EXPENSE_CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label }))}
+                    options={expenseCategories.map((c) => ({ value: c.name, label: c.name }))}
                     styles={formSelectStyles}
                     menuPortalTarget={document.body}
                   />
@@ -970,55 +963,9 @@ export default function Expenses() {
                 </Form.Group>
               </Col>
 
-              {/* Bill / Receipt Image Upload Dropzone */}
-              <Col xs={12}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label d-flex align-items-center justify-content-between">
-                    <span>Attach Bill / Cash Receipt Image</span>
-                    {formData.receiptImg && (
-                      <span className="text-success fs-11px fw-600">✓ Bill Image Attached</span>
-                    )}
-                  </Form.Label>
-
-                  {!formData.receiptImg ? (
-                    <div className="ur-receipt-upload-box">
-                      <input
-                        type="file"
-                        id="expense-receipt-file-add"
-                        accept="image/*,application/pdf"
-                        onChange={handleReceiptFileChange}
-                        style={{ display: "none" }}
-                      />
-                      <label htmlFor="expense-receipt-file-add" className="w-100 cursor-pointer mb-0">
-                        <FiPaperclip size={20} className="text-danger mb-1" />
-                        <div className="fw-700 text-dark fs-12px">Click to Upload Bill / Receipt Image</div>
-                        <span className="text-muted fs-11px">Supports PNG, JPG, JPEG, PDF receipt</span>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="ur-receipt-preview-card">
-                      <img src={formData.receiptImg} alt="Receipt preview" className="ur-receipt-thumb" />
-                      <div className="flex-grow-1">
-                        <div className="fw-700 text-dark fs-12px text-truncate" style={{ maxWidth: "260px" }}>
-                          {formData.receiptName || "Uploaded_Bill_Image.png"}
-                        </div>
-                        <span className="text-success fs-10.5px fw-600">Bill receipt attached</span>
-                      </div>
-                      <Button
-                        variant="light"
-                        size="sm"
-                        className="text-danger p-1 border rounded-6px"
-                        onClick={() => setFormData({ ...formData, receiptImg: null, receiptName: "" })}
-                        title="Remove Image"
-                      >
-                        <FiX size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
             </Row>
           </Modal.Body>
+
 
           <Modal.Footer className="border-0 pt-0">
             <Button variant="light" size="sm" onClick={() => setShowAddModal(false)} className="rounded-6px px-3">
@@ -1067,9 +1014,9 @@ export default function Expenses() {
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Category *</Form.Label>
                   <Select
-                    value={EXPENSE_CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === formData.category)}
+                    value={expenseCategories.map((c) => ({ value: c.name, label: c.name })).find((c) => c.value === formData.category) || { value: formData.category, label: formData.category }}
                     onChange={(opt) => setFormData({ ...formData, category: opt.value })}
-                    options={EXPENSE_CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label }))}
+                    options={expenseCategories.map((c) => ({ value: c.name, label: c.name }))}
                     styles={formSelectStyles}
                     menuPortalTarget={document.body}
                   />
@@ -1115,55 +1062,9 @@ export default function Expenses() {
                 </Form.Group>
               </Col>
 
-              {/* Bill / Receipt Image Upload Dropzone */}
-              <Col xs={12}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label d-flex align-items-center justify-content-between">
-                    <span>Attached Bill / Cash Receipt Image</span>
-                    {formData.receiptImg && (
-                      <span className="text-success fs-11px fw-600">✓ Bill Image Attached</span>
-                    )}
-                  </Form.Label>
-
-                  {!formData.receiptImg ? (
-                    <div className="ur-receipt-upload-box">
-                      <input
-                        type="file"
-                        id="expense-receipt-file-edit"
-                        accept="image/*,application/pdf"
-                        onChange={handleReceiptFileChange}
-                        style={{ display: "none" }}
-                      />
-                      <label htmlFor="expense-receipt-file-edit" className="w-100 cursor-pointer mb-0">
-                        <FiPaperclip size={20} className="text-danger mb-1" />
-                        <div className="fw-700 text-dark fs-12px">Click to Upload Bill / Receipt Image</div>
-                        <span className="text-muted fs-11px">Supports PNG, JPG, JPEG, PDF receipt</span>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="ur-receipt-preview-card">
-                      <img src={formData.receiptImg} alt="Receipt preview" className="ur-receipt-thumb" />
-                      <div className="flex-grow-1">
-                        <div className="fw-700 text-dark fs-12px text-truncate" style={{ maxWidth: "260px" }}>
-                          {formData.receiptName || "Uploaded_Bill_Image.png"}
-                        </div>
-                        <span className="text-success fs-10.5px fw-600">Bill receipt attached</span>
-                      </div>
-                      <Button
-                        variant="light"
-                        size="sm"
-                        className="text-danger p-1 border rounded-6px"
-                        onClick={() => setFormData({ ...formData, receiptImg: null, receiptName: "" })}
-                        title="Remove Image"
-                      >
-                        <FiX size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
             </Row>
           </Modal.Body>
+
 
           <Modal.Footer className="border-0 pt-0">
             <Button variant="light" size="sm" onClick={() => setShowEditModal(false)} className="rounded-6px px-3">

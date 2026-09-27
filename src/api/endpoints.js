@@ -32,4 +32,12 @@ export const ENDPOINTS = {
     category: "/budget/category",
     categoryById: (id) => `/budget/category/${id}`,
   },
+  categories: {
+    income: "/categories/income",
+    expense: "/categories/expense",
+    create: "/categories",
+    byId: (id) => `/categories/${id}`,
+  },
 };
+
+

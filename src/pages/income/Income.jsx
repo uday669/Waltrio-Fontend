@@ -47,23 +47,11 @@ import {
 } from "../../hooks/useIncomes";
 import { deleteIncome } from "../../api/incomes.api";
 import { toast } from "../../lib/toast";
-
-// Available Categories with icons & theme colors
-const CATEGORIES = [
-  { label: "All Categories", value: "all", color: "#64748b" },
-  { label: "Salary", value: "Salary", color: "#10b981", bg: "#ecfdf5" },
-  { label: "Freelance", value: "Freelance", color: "#6366f1", bg: "#eef2ff" },
-  { label: "Rental", value: "Rental", color: "#06b6d4", bg: "#ecfeff" },
-  { label: "Dividends", value: "Dividends", color: "#8b5cf6", bg: "#f5f3ff" },
-  { label: "Consulting", value: "Consulting", color: "#f59e0b", bg: "#fffbeb" },
-  { label: "Investments", value: "Investments", color: "#14b8a6", bg: "#f0fdfa" },
-  { label: "Digital Products", value: "Digital Products", color: "#ec4899", bg: "#fdf2f8" },
-  { label: "Bonus", value: "Bonus", color: "#e11d48", bg: "#ffe4e6" },
-  { label: "Other", value: "Other", color: "#64748b", bg: "#f1f5f9" },
-];
+import { useCategories } from "../../context/CategoryContext";
 
 export default function Income() {
   const queryClient = useQueryClient();
+  const { incomeCategories, getCategoryMeta } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("monthly");
@@ -336,7 +324,7 @@ export default function Income() {
       dItems = Object.entries(catMap)
         .sort((a, b) => b[1] - a[1])
         .map(([name, amount], i) => {
-          const cat = CATEGORIES.find((c) => c.value === name);
+          const cat = getCategoryMeta(name, "income");
           return {
             name,
             value: Math.round((amount / total) * 100),
@@ -450,7 +438,7 @@ export default function Income() {
     setFormData({
       source: "",
       description: "",
-      category: "Salary",
+      category: incomeCategories[0]?.name || "Salary",
       account: "HDFC Bank •••• 4091",
       amount: "",
       date: new Date().toISOString().slice(0, 10),
@@ -569,7 +557,7 @@ export default function Income() {
       sortable: true,
       width: "140px",
       cell: (row) => {
-        const catInfo = CATEGORIES.find((c) => c.value === row.category) || {};
+        const catInfo = getCategoryMeta(row.category, "income");
         return (
           <span
             className="ur-category-badge"
@@ -940,9 +928,15 @@ export default function Income() {
 
             {/* Category Filter */}
             <Select
-              value={CATEGORIES.map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === selectedCategory)}
+              value={[
+                { value: "all", label: "All Categories" },
+                ...incomeCategories.map((c) => ({ value: c.name, label: c.name })),
+              ].find((c) => c.value === selectedCategory) || { value: "all", label: "All Categories" }}
               onChange={(opt) => setSelectedCategory(opt ? opt.value : "all")}
-              options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+              options={[
+                { value: "all", label: "All Categories" },
+                ...incomeCategories.map((c) => ({ value: c.name, label: c.name })),
+              ]}
               styles={filterSelectStyles}
               isSearchable={false}
             />
@@ -989,9 +983,9 @@ export default function Income() {
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Category *</Form.Label>
                   <Select
-                    value={CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === formData.category)}
+                    value={incomeCategories.map((c) => ({ value: c.name, label: c.name })).find((c) => c.value === formData.category) || { value: formData.category, label: formData.category }}
                     onChange={(opt) => setFormData({ ...formData, category: opt.value })}
-                    options={CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label }))}
+                    options={incomeCategories.map((c) => ({ value: c.name, label: c.name }))}
                     styles={formSelectStyles}
                     menuPortalTarget={document.body}
                   />
@@ -1039,54 +1033,6 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
-              {/* Bill / Receipt Image Upload Dropzone */}
-              <Col xs={12}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label d-flex align-items-center justify-content-between">
-                    <span>Attach Bill / Salary Slip / Receipt Image</span>
-                    {formData.receiptImg && (
-                      <span className="text-success fs-11px fw-600">✓ Image Attached</span>
-                    )}
-                  </Form.Label>
-
-                  {!formData.receiptImg ? (
-                    <div className="ur-receipt-upload-box">
-                      <input
-                        type="file"
-                        id="income-receipt-file-add"
-                        accept="image/*,application/pdf"
-                        onChange={handleReceiptFileChange}
-                        style={{ display: "none" }}
-                      />
-                      <label htmlFor="income-receipt-file-add" className="w-100 cursor-pointer mb-0">
-                        <FiPaperclip size={20} className="text-primary mb-1" />
-                        <div className="fw-700 text-dark fs-12px">Click to Upload Bill / Receipt Image</div>
-                        <span className="text-muted fs-11px">Supports PNG, JPG, JPEG, PDF receipt</span>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="ur-receipt-preview-card">
-                      <img src={formData.receiptImg} alt="Receipt preview" className="ur-receipt-thumb" />
-                      <div className="flex-grow-1">
-                        <div className="fw-700 text-dark fs-12px text-truncate" style={{ maxWidth: "260px" }}>
-                          {formData.receiptName || "Uploaded_Receipt_Image.png"}
-                        </div>
-                        <span className="text-success fs-10.5px fw-600">Receipt image loaded</span>
-                      </div>
-                      <Button
-                        variant="light"
-                        size="sm"
-                        className="text-danger p-1 border rounded-6px"
-                        onClick={() => setFormData({ ...formData, receiptImg: null, receiptName: "" })}
-                        title="Remove Image"
-                      >
-                        <FiX size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
-
               <Col xs={12}>
                 <Form.Check
                   type="checkbox"
@@ -1097,6 +1043,7 @@ export default function Income() {
                   className="ur-checkbox-label"
                 />
               </Col>
+
             </Row>
           </Modal.Body>
 
@@ -1147,9 +1094,9 @@ export default function Income() {
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Category *</Form.Label>
                   <Select
-                    value={CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label })).find((c) => c.value === formData.category)}
+                    value={incomeCategories.map((c) => ({ value: c.name, label: c.name })).find((c) => c.value === formData.category) || { value: formData.category, label: formData.category }}
                     onChange={(opt) => setFormData({ ...formData, category: opt.value })}
-                    options={CATEGORIES.filter((c) => c.value !== "all").map((c) => ({ value: c.value, label: c.label }))}
+                    options={incomeCategories.map((c) => ({ value: c.name, label: c.name }))}
                     styles={formSelectStyles}
                     menuPortalTarget={document.body}
                   />
@@ -1195,54 +1142,6 @@ export default function Income() {
                 </Form.Group>
               </Col>
 
-              {/* Bill / Receipt Image Upload Dropzone */}
-              <Col xs={12}>
-                <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label d-flex align-items-center justify-content-between">
-                    <span>Attached Bill / Salary Slip / Receipt Image</span>
-                    {formData.receiptImg && (
-                      <span className="text-success fs-11px fw-600">✓ Image Attached</span>
-                    )}
-                  </Form.Label>
-
-                  {!formData.receiptImg ? (
-                    <div className="ur-receipt-upload-box">
-                      <input
-                        type="file"
-                        id="income-receipt-file-edit"
-                        accept="image/*,application/pdf"
-                        onChange={handleReceiptFileChange}
-                        style={{ display: "none" }}
-                      />
-                      <label htmlFor="income-receipt-file-edit" className="w-100 cursor-pointer mb-0">
-                        <FiPaperclip size={20} className="text-primary mb-1" />
-                        <div className="fw-700 text-dark fs-12px">Click to Upload Bill / Receipt Image</div>
-                        <span className="text-muted fs-11px">Supports PNG, JPG, JPEG, PDF receipt</span>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="ur-receipt-preview-card">
-                      <img src={formData.receiptImg} alt="Receipt preview" className="ur-receipt-thumb" />
-                      <div className="flex-grow-1">
-                        <div className="fw-700 text-dark fs-12px text-truncate" style={{ maxWidth: "260px" }}>
-                          {formData.receiptName || "Uploaded_Receipt_Image.png"}
-                        </div>
-                        <span className="text-success fs-10.5px fw-600">Receipt image loaded</span>
-                      </div>
-                      <Button
-                        variant="light"
-                        size="sm"
-                        className="text-danger p-1 border rounded-6px"
-                        onClick={() => setFormData({ ...formData, receiptImg: null, receiptName: "" })}
-                        title="Remove Image"
-                      >
-                        <FiX size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
-
               <Col xs={12}>
                 <Form.Check
                   type="checkbox"
@@ -1253,6 +1152,7 @@ export default function Income() {
                   className="ur-checkbox-label"
                 />
               </Col>
+
             </Row>
           </Modal.Body>
 

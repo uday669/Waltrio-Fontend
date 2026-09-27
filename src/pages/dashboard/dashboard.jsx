@@ -41,12 +41,10 @@ import { formSelectStyles } from "../../utils/selectStyles";
 import { toast } from "../../lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
+import { useCategories } from "../../context/CategoryContext";
 
-
-// Category options for the quick-add modals.
-const INCOME_CATEGORIES = ["Salary", "Freelance", "Rental", "Dividends", "Consulting", "Investments", "Digital Products", "Bonus", "Other"].map((c) => ({ value: c, label: c }));
-const EXPENSE_CATEGORIES = ["Housing", "Food & Dining", "Transportation", "Shopping", "Utilities", "Healthcare", "Fitness & Wellness", "Entertainment", "Education", "Other"].map((c) => ({ value: c, label: c }));
 const today = () => new Date().toISOString().slice(0, 10);
+
 
 // Currency + percent formatting helpers.
 const fmtCurrency = (n) =>
@@ -73,14 +71,14 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { name, user } = useAuth();
+  const { incomeCategories, expenseCategories } = useCategories();
   const firstName = (name || user?.name || "User").split(" ")[0];
-
 
   // ---- Quick-add modals (Add Income / Add Expense) ----------------------
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [incomeForm, setIncomeForm] = useState({ source: "", category: "Salary", amount: "", date: today(), description: "" });
-  const [expenseForm, setExpenseForm] = useState({ merchant: "", category: "Food & Dining", amount: "", date: today(), description: "" });
+  const [incomeForm, setIncomeForm] = useState({ source: "", category: "", amount: "", date: today(), description: "" });
+  const [expenseForm, setExpenseForm] = useState({ merchant: "", category: "", amount: "", date: today(), description: "" });
 
   const refreshDashboard = () => queryClient.invalidateQueries({ queryKey: ["dashboard"] });
 
@@ -103,13 +101,14 @@ export default function Dashboard() {
   });
 
   const openIncomeModal = () => {
-    setIncomeForm({ source: "", category: "Salary", amount: "", date: today(), description: "" });
+    setIncomeForm({ source: "", category: incomeCategories[0]?.name || "", amount: "", date: today(), description: "" });
     setShowIncomeModal(true);
   };
   const openExpenseModal = () => {
-    setExpenseForm({ merchant: "", category: "Food & Dining", amount: "", date: today(), description: "" });
+    setExpenseForm({ merchant: "", category: expenseCategories[0]?.name || "", amount: "", date: today(), description: "" });
     setShowExpenseModal(true);
   };
+
 
   const handleSaveIncome = (e) => {
     e.preventDefault();
@@ -1061,9 +1060,15 @@ export default function Dashboard() {
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Category *</Form.Label>
               <Select
-                value={INCOME_CATEGORIES.find((o) => o.value === incomeForm.category)}
-                onChange={(opt) => setIncomeForm({ ...incomeForm, category: opt.value })}
-                options={INCOME_CATEGORIES}
+                value={
+                  incomeCategories
+                    .map((c) => ({ value: c.name, label: c.name }))
+                    .find((o) => o.value === incomeForm.category) ||
+                  (incomeForm.category ? { value: incomeForm.category, label: incomeForm.category } : null)
+                }
+                onChange={(opt) => setIncomeForm({ ...incomeForm, category: opt ? opt.value : "" })}
+                options={incomeCategories.map((c) => ({ value: c.name, label: c.name }))}
+                placeholder="Select Income Category..."
                 styles={formSelectStyles}
                 menuPortalTarget={document.body}
               />
@@ -1141,13 +1146,20 @@ export default function Dashboard() {
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Category *</Form.Label>
               <Select
-                value={EXPENSE_CATEGORIES.find((o) => o.value === expenseForm.category)}
-                onChange={(opt) => setExpenseForm({ ...expenseForm, category: opt.value })}
-                options={EXPENSE_CATEGORIES}
+                value={
+                  expenseCategories
+                    .map((c) => ({ value: c.name, label: c.name }))
+                    .find((o) => o.value === expenseForm.category) ||
+                  (expenseForm.category ? { value: expenseForm.category, label: expenseForm.category } : null)
+                }
+                onChange={(opt) => setExpenseForm({ ...expenseForm, category: opt ? opt.value : "" })}
+                options={expenseCategories.map((c) => ({ value: c.name, label: c.name }))}
+                placeholder="Select Expense Category..."
                 styles={formSelectStyles}
                 menuPortalTarget={document.body}
               />
             </Form.Group>
+
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
               <Form.Control
