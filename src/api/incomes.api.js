@@ -17,8 +17,8 @@ export const getIncomes = (params) =>
   api.get(`${ENDPOINTS.incomes.list}${toQuery(params)}`, { auth: true });
 
 // GET /incomes/summary — the 4 metric cards.
-export const getIncomeSummary = () =>
-  api.get(ENDPOINTS.incomes.summary, { auth: true });
+export const getIncomeSummary = (params) =>
+  api.get(`${ENDPOINTS.incomes.summary}${toQuery(params)}`, { auth: true });
 
 // GET /incomes/analytics — data for the two charts.
 export const getIncomeAnalytics = (params) =>

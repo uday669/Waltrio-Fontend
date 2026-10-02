@@ -32,10 +32,17 @@ import {
 import { deleteBudgetCategory } from "../../api/budgets.api";
 import { toast } from "../../lib/toast";
 import { useCategories } from "../../context/CategoryContext";
+import MonthYearFilter, { MONTHS } from "../../components/common/MonthYearFilter";
 
 export default function Budgets() {
   const queryClient = useQueryClient();
   const { expenseCategories, allCategories, getCategoryMeta } = useCategories();
+
+  // Header Month and Year Filter State
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedMode, setSelectedMode] = useState("month");
 
   // Categories available for setting budgets
   const availableCategories = useMemo(() => {
@@ -45,13 +52,16 @@ export default function Budgets() {
     return allCategories || [];
   }, [expenseCategories, allCategories]);
 
-  // Dynamic Current Month & Year
-  const currentMonthYear = useMemo(() => {
-    return new Date().toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
-  }, []);
+  // Dynamic Selected Month & Year
+  const selectedMonthYear = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const [y, m, d] = selectedDate.split("-").map(Number);
+      const mObj = MONTHS.find((mo) => mo.value === m);
+      return `${d} ${mObj ? mObj.short : ""} ${y}`;
+    }
+    const monthLabel = MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Month";
+    return `${monthLabel} ${selectedYear}`;
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
 
 
   // GET /budget/category — real caps (visuals attached client-side).
@@ -368,16 +378,25 @@ export default function Budgets() {
           <h1 className="ms-greeting-title mb-1 d-flex align-items-center gap-2">
             <span>Budget Planner &amp; Caps</span>
             <Badge bg="primary-subtle" className="text-primary fs-11px fw-700 py-1 px-2 rounded-6px">
-              {currentMonthYear}
+              {selectedMonthYear}
             </Badge>
-
           </h1>
           <p className="ms-greeting-subtitle mb-0">
             Set category spending limits, track consumption rates in real-time, and prevent budget overruns.
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <MonthYearFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            selectedDate={selectedDate}
+            selectedMode={selectedMode}
+            onChangeMonth={setSelectedMonth}
+            onChangeYear={setSelectedYear}
+            onChangeDate={setSelectedDate}
+            onChangeMode={setSelectedMode}
+          />
           <Button
             className="btn btn-primary rounded-8px d-flex align-items-center gap-1 fs-12.5px fw-600 px-3 py-2"
             onClick={handleOpenAdd}

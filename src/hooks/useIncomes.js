@@ -157,10 +157,10 @@ export function useIncomes(params = {}, options = {}) {
   });
 }
 
-export function useIncomeSummary(options = {}) {
+export function useIncomeSummary(params = {}, options = {}) {
   return useQuery({
-    queryKey: [...INCOMES_KEY, "summary"],
-    queryFn: getIncomeSummary,
+    queryKey: [...INCOMES_KEY, "summary", params],
+    queryFn: () => getIncomeSummary(params),
     select: unwrap,
     ...options,
   });

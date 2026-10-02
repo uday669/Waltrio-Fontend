@@ -55,10 +55,10 @@ export function useExpenses(params = {}, options = {}) {
   });
 }
 
-export function useExpenseSummary(options = {}) {
+export function useExpenseSummary(params = {}, options = {}) {
   return useQuery({
-    queryKey: [...EXPENSES_KEY, "summary"],
-    queryFn: getExpenseSummary,
+    queryKey: [...EXPENSES_KEY, "summary", params],
+    queryFn: () => getExpenseSummary(params),
     select: unwrap,
     ...options,
   });

@@ -5,10 +5,10 @@ import { getDashboardOverview, getTotalBalance } from "../api/dashboard.api";
 // Unwrap { success, data } -> data.
 const unwrap = (res) => res?.data ?? res ?? null;
 
-export function useDashboardOverview(options = {}) {
+export function useDashboardOverview(params = {}, options = {}) {
   return useQuery({
-    queryKey: ["dashboard", "overview"],
-    queryFn: getDashboardOverview,
+    queryKey: ["dashboard", "overview", params],
+    queryFn: () => getDashboardOverview(params),
     select: unwrap,
     ...options,
   });

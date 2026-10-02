@@ -15,8 +15,8 @@ export const getExpenses = (params) =>
   api.get(`${ENDPOINTS.expenses.list}${toQuery(params)}`, { auth: true });
 
 // GET /expenses/summary — the 4 metric cards.
-export const getExpenseSummary = () =>
-  api.get(ENDPOINTS.expenses.summary, { auth: true });
+export const getExpenseSummary = (params) =>
+  api.get(`${ENDPOINTS.expenses.summary}${toQuery(params)}`, { auth: true });
 
 // GET /expenses/analytics — data for the two charts.
 export const getExpenseAnalytics = (params) =>

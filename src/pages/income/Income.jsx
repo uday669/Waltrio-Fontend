@@ -48,6 +48,8 @@ import {
 import { deleteIncome } from "../../api/incomes.api";
 import { toast } from "../../lib/toast";
 import { useCategories } from "../../context/CategoryContext";
+import MonthYearFilter, { MONTHS } from "../../components/common/MonthYearFilter";
+import AppDatePicker from "../../components/common/AppDatePicker";
 
 export default function Income() {
   const queryClient = useQueryClient();
@@ -55,45 +57,30 @@ export default function Income() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("monthly");
-  // Server-side period filter for GET /incomes:
-  //   "current" -> no params (backend defaults to current month)
-  //   "all"     -> ?all=true
-  //   "YYYY-M"  -> ?month=M&year=YYYY
-  const [selectedPeriod, setSelectedPeriod] = useState("current");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedMode, setSelectedMode] = useState("month");
 
-  // Period dropdown options: This Month, All Time, then the last 11 months.
-  const periodOptions = useMemo(() => {
-    const opts = [
-      { value: "current", label: "This Month" },
-      { value: "all", label: "All Time" },
-    ];
-    const now = new Date();
-    for (let k = 1; k <= 11; k++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
-      opts.push({
-        value: `${d.getFullYear()}-${d.getMonth() + 1}`,
-        label: d.toLocaleString("en-US", { month: "long", year: "numeric" }),
-      });
+  const selectedMonthName = useMemo(() => {
+    return MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Month";
+  }, [selectedMonth]);
+
+  // Translate active filter mode into GET /incomes params
+  const queryParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      return { date: selectedDate, category: selectedCategory, status: selectedStatus };
     }
-    return opts;
-  }, []);
-
-  // Translate the selected period into GET /incomes query params.
-  const periodParams = useMemo(() => {
-    if (selectedPeriod === "all") return { all: true };
-    if (selectedPeriod === "current") return {};
-    const [year, month] = selectedPeriod.split("-").map(Number);
-    return { month, year };
-  }, [selectedPeriod]);
+    return { month: selectedMonth, year: selectedYear, category: selectedCategory, status: selectedStatus };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear, selectedCategory, selectedStatus]);
 
   // ---- Server data (TanStack Query) -------------------------------------
-  // GET /incomes — full list (period + filters passed as params).
   const {
     data: incomesData,
     isLoading: incomesLoading,
     isError: incomesIsError,
     error: incomesErr,
-  } = useIncomes({ ...periodParams, category: selectedCategory, status: selectedStatus });
+  } = useIncomes(queryParams);
 
   // Surface a real API/auth failure instead of a silent empty table.
   React.useEffect(() => {
@@ -107,10 +94,10 @@ export default function Income() {
   const incomes = useMemo(() => incomesData || [], [incomesData]);
 
   // GET /incomes/summary — the 4 metric cards.
-  const { data: summaryData } = useIncomeSummary();
+  const { data: summaryData } = useIncomeSummary(queryParams);
 
   // GET /incomes/analytics — data for the two charts.
-  const { data: analyticsData } = useIncomeAnalytics({ range: timeRange });
+  const { data: analyticsData } = useIncomeAnalytics({ range: timeRange, ...queryParams });
 
   // ---- Mutations --------------------------------------------------------
   const { mutate: createIncomeMut, isPending: creating } = useCreateIncome({
@@ -237,9 +224,14 @@ export default function Income() {
     return incomes.filter((item) => {
       const matchCat = selectedCategory === "all" || item.category === selectedCategory;
       const matchStatus = selectedStatus === "all" || item.status === selectedStatus;
-      return matchCat && matchStatus;
+      const matchDate =
+        selectedMode !== "date" ||
+        !selectedDate ||
+        item.date === selectedDate ||
+        String(item.date).startsWith(selectedDate);
+      return matchCat && matchStatus && matchDate;
     });
-  }, [incomes, selectedCategory, selectedStatus]);
+  }, [incomes, selectedCategory, selectedStatus, selectedMode, selectedDate]);
 
   // ---- Chart data -------------------------------------------------------
   // Use GET /incomes/analytics when it returns a shape we recognize;
@@ -592,21 +584,18 @@ export default function Income() {
       ),
     },
     {
-      name: "Date & Time",
+      name: "Date",
       selector: (row) => row.date,
       sortable: true,
       width: "140px",
       cell: (row) => (
-        <div>
-          <div className="fw-600 text-dark fs-11.5px">
-            {new Date(row.date).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </div>
-          <div className="text-muted fs-10.5px">{row.time}</div>
-        </div>
+        <span className="fw-600 text-dark fs-11.5px">
+          {new Date(row.date).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
+        </span>
       ),
     },
     {
@@ -704,7 +693,17 @@ export default function Income() {
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <MonthYearFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            selectedDate={selectedDate}
+            selectedMode={selectedMode}
+            onChangeMonth={setSelectedMonth}
+            onChangeYear={setSelectedYear}
+            onChangeDate={setSelectedDate}
+            onChangeMode={setSelectedMode}
+          />
           <Button className="ms-btn-income" onClick={handleOpenAdd}>
             <FiPlus size={14} />
             <span>Add New Income</span>
@@ -907,7 +906,7 @@ export default function Income() {
         keyField="id"
         loading={incomesLoading}
         title="All Income Transactions"
-        subtitle={`${periodOptions.find((p) => p.value === selectedPeriod)?.label || "This Month"} • ${tableData.length} income log(s)`}
+        subtitle={`${selectedMonthName} ${selectedYear} • ${tableData.length} income log(s)`}
         searchPlaceholder="Search by payer, source, or reference..."
         selectableRows={true}
         initialSortField="date"
@@ -917,15 +916,6 @@ export default function Income() {
         exportFileName="Income_Statements"
         filters={
           <div className="ur-inline-filters">
-            {/* Period Filter — GET /incomes?month=&year= | ?all=true | (default current month) */}
-            <Select
-              value={periodOptions.find((p) => p.value === selectedPeriod)}
-              onChange={(opt) => setSelectedPeriod(opt ? opt.value : "current")}
-              options={periodOptions}
-              styles={filterSelectStyles}
-              isSearchable={false}
-            />
-
             {/* Category Filter */}
             <Select
               value={[
@@ -1011,11 +1001,9 @@ export default function Income() {
               <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
-                  <Form.Control
-                    type="date"
+                  <AppDatePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="ur-form-input"
+                    onChange={(dateStr) => setFormData({ ...formData, date: dateStr })}
                   />
                 </Form.Group>
               </Col>
@@ -1121,11 +1109,9 @@ export default function Income() {
               <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
-                  <Form.Control
-                    type="date"
+                  <AppDatePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="ur-form-input"
+                    onChange={(dateStr) => setFormData({ ...formData, date: dateStr })}
                   />
                 </Form.Group>
               </Col>
@@ -1232,9 +1218,9 @@ export default function Income() {
                   <span className="fw-600 text-dark">{activeIncome.account}</span>
                 </div>
                 <div className="d-flex justify-content-between py-1 border-bottom">
-                  <span className="text-muted">Date &amp; Timestamp:</span>
+                  <span className="text-muted">Date:</span>
                   <span className="fw-600 text-dark">
-                    {activeIncome.date} at {activeIncome.time}
+                    {activeIncome.date}
                   </span>
                 </div>
                 <div className="d-flex justify-content-between py-1 border-bottom">

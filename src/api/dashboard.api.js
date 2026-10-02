@@ -1,10 +1,14 @@
-// Dashboard API functions.
-import { api } from "./client";
-import { ENDPOINTS } from "./endpoints";
+function toQuery(params = {}) {
+  const usable = Object.entries(params).filter(
+    ([, v]) => v !== undefined && v !== null && v !== "" && v !== "all"
+  );
+  if (!usable.length) return "";
+  return `?${new URLSearchParams(usable).toString()}`;
+}
 
 // GET /dashboard/overview — everything the dashboard renders.
-export const getDashboardOverview = () =>
-  api.get(ENDPOINTS.dashboard.overview, { auth: true });
+export const getDashboardOverview = (params) =>
+  api.get(`${ENDPOINTS.dashboard.overview}${toQuery(params)}`, { auth: true });
 
 // GET /dashboard/total-balance — the Total Balance stat card.
 export const getTotalBalance = () =>

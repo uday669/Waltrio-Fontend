@@ -42,6 +42,8 @@ import { toast } from "../../lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
 import { useCategories } from "../../context/CategoryContext";
+import MonthYearFilter, { MONTHS } from "../../components/common/MonthYearFilter";
+import AppDatePicker from "../../components/common/AppDatePicker";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -73,6 +75,13 @@ export default function Dashboard() {
   const { name, user } = useAuth();
   const { incomeCategories, expenseCategories } = useCategories();
   const firstName = (name || user?.name || "User").split(" ")[0];
+
+  // Header Month and Year Filter State
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedMode, setSelectedMode] = useState("month");
+  const selectedMonthName = MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Current Month";
 
   // ---- Quick-add modals (Add Income / Add Expense) ----------------------
   const [showIncomeModal, setShowIncomeModal] = useState(false);
@@ -142,8 +151,14 @@ export default function Dashboard() {
     });
   };
 
-  // GET /dashboard/overview
-  const { data: overview } = useDashboardOverview();
+  // Dashboard Query Params (Month / Specific Date)
+  const dashboardParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) return { date: selectedDate };
+    return { month: selectedMonth, year: selectedYear };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
+
+  // GET /dashboard/overview with filters
+  const { data: overview } = useDashboardOverview(dashboardParams);
   const c = overview?.cards || {};
 
   // GET /dashboard/total-balance — dedicated source for the Total Balance card.
@@ -465,11 +480,21 @@ export default function Dashboard() {
             Good Morning, {firstName} <span className="ms-greeting-emoji">👏</span>
           </h1>
           <p className="ms-greeting-subtitle mb-0">
-            Here's your comprehensive financial overview for August 2026.
+            Here's your comprehensive financial overview for {selectedMonthName} {selectedYear}.
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <MonthYearFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            selectedDate={selectedDate}
+            selectedMode={selectedMode}
+            onChangeMonth={setSelectedMonth}
+            onChangeYear={setSelectedYear}
+            onChangeDate={setSelectedDate}
+            onChangeMode={setSelectedMode}
+          />
           <Button className="ms-btn-income" onClick={openIncomeModal}>
             <FiPlus size={13} />
             <span>Add Income</span>
@@ -1088,11 +1113,9 @@ export default function Dashboard() {
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Date</Form.Label>
-              <Form.Control
-                type="date"
+              <AppDatePicker
                 value={incomeForm.date}
-                onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })}
-                className="ur-form-input"
+                onChange={(dateStr) => setIncomeForm({ ...incomeForm, date: dateStr })}
               />
             </Form.Group>
             <Form.Group className="mb-2">
@@ -1175,11 +1198,9 @@ export default function Dashboard() {
             </Form.Group>
             <Form.Group className="mb-2">
               <Form.Label className="ur-form-label">Date</Form.Label>
-              <Form.Control
-                type="date"
+              <AppDatePicker
                 value={expenseForm.date}
-                onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
-                className="ur-form-input"
+                onChange={(dateStr) => setExpenseForm({ ...expenseForm, date: dateStr })}
               />
             </Form.Group>
             <Form.Group className="mb-2">
