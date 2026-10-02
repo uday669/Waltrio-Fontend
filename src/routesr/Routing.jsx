@@ -16,32 +16,57 @@ import Settings from '../pages/settings/Settings';
 import Calendar from '../pages/calendar/Calendar';
 import Reports from '../pages/reports/Reports';
 import Notifications from '../pages/notifications/Notifications';
+import ProtectedRoute from './ProtectedRoute';
+import PublicRoute from './PublicRoute';
 
 export default function Routing() {
   return (
     <Routes>
-      {/* Root redirect to login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* Root redirect: PublicRoute redirects to /dashboard if logged in, otherwise /login */}
+      <Route
+        path="/"
+        element={
+          <PublicRoute>
+            <Navigate to="/login" replace />
+          </PublicRoute>
+        }
+      />
 
-      {/* Auth Routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      {/* Public Auth Routes */}
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        }
+      />
       <Route path="/otp" element={<AuthOtp />} />
 
-      {/* Protected / Dashboard Layout Routes */}
-      <Route element={<MainLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/income" element={<Income />} />
-        <Route path="/expenses" element={<Expenses />} />
-        {/* <Route path="/transactions" element={<Transactions />} /> */}
-        <Route path="/budgets" element={<Budgets />} />
-        {/* <Route path="/goals" element={<SavingsGoals />} /> */}
-        {/* <Route path="/split" element={<GroupsSplit />} /> */}
-        {/* <Route path="/emi" element={<EmiLoans />} /> */}
-        {/* <Route path="/calendar" element={<Calendar />} /> */}
-        {/* <Route path="/reports" element={<Reports />} /> */}
-        {/* <Route path="/notifications" element={<Notifications />} /> */}
-        <Route path="/settings" element={<Settings />} />
+      {/* Protected Routes: requires valid token, redirects to /login if token not found */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/income" element={<Income />} />
+          <Route path="/expenses" element={<Expenses />} />
+          {/* <Route path="/transactions" element={<Transactions />} /> */}
+          <Route path="/budgets" element={<Budgets />} />
+          {/* <Route path="/goals" element={<SavingsGoals />} /> */}
+          {/* <Route path="/split" element={<GroupsSplit />} /> */}
+          {/* <Route path="/emi" element={<EmiLoans />} /> */}
+          {/* <Route path="/calendar" element={<Calendar />} /> */}
+          {/* <Route path="/reports" element={<Reports />} /> */}
+          {/* <Route path="/notifications" element={<Notifications />} /> */}
+          <Route path="/settings" element={<Settings />} />
+        </Route>
       </Route>
 
       {/* Catch-all fallback */}

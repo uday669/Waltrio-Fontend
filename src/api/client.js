@@ -100,6 +100,9 @@ export async function request(path, { method = "GET", body, headers = {} } = {})
   }
 
   if (!response.ok) {
+    if (response.status === 401 && !path.includes("/auth/login") && !path.includes("/auth/register")) {
+      clearToken();
+    }
     throw new ApiError(parseMessage(data, `Request failed (${response.status})`), {
       status: response.status,
       data,

@@ -904,3 +904,18 @@ a {
   border-radius: 4px;
   background-color: #6366f1;
 }
+
+/* ==========================================================================
+   Prevent iOS Safari Auto-Zoom on Input Focus
+   (iOS automatically zooms in on form elements if font-size is < 16px)
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  .form-control,
+  .form-select,
+  .ur-form-input {
+    font-size: 16px !important;
+  }
+}
