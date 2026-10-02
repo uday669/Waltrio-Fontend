@@ -13,9 +13,6 @@ import Modal from "react-bootstrap/Modal";
 import {
   FiUser,
   FiLock,
-  FiBell,
-  FiShield,
-  FiDownload,
   FiTrash2,
   FiCheckCircle,
   FiKey,
@@ -36,6 +33,7 @@ import {
 import Select from "react-select";
 import { formSelectStyles } from "../../utils/selectStyles";
 import { useAuth } from "../../context/AuthContext";
+import { useProfile, useUpdateProfile } from "../../hooks/useAuth";
 import {
   useCategories,
   AVAILABLE_ICONS,
@@ -44,10 +42,13 @@ import {
 } from "../../context/CategoryContext";
 import { toast } from "../../lib/toast";
 
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile");
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const { user, name, email } = useAuth();
+  const { user } = useAuth();
+  const { data: profileData, isLoading: profileLoading } = useProfile();
+  const { mutateAsync: updateProfileMut, isPending: profileUpdating } = useUpdateProfile();
 
   // Category Management Context
   const {
@@ -82,28 +83,25 @@ export default function Settings() {
 
   // Profile Form State
   const [profile, setProfile] = useState({
-    fullName: name || user?.name || "Uday Waltrio",
-    email: email || user?.email || "uday@waltro.com",
-    phone: user?.phone || "+91 98765 43210",
-    currency: user?.currency || "INR",
-    timezone: user?.timezone || "Asia/Kolkata (IST +5:30)",
-    language: user?.language || "English (US)",
-    dateFormat: user?.dateFormat || "DD/MM/YYYY",
+    name: "",
+    email: "",
+    phoneNumber: "",
+    currency: "INR",
   });
 
   React.useEffect(() => {
-    if (user) {
-      setProfile((prev) => ({
-        ...prev,
-        fullName: user.name || prev.fullName,
-        email: user.email || prev.email,
-        phone: user.phone || prev.phone,
-        currency: user.currency || prev.currency,
-      }));
+    const source = profileData || user;
+    if (source) {
+      setProfile({
+        name: source.name || source.fullName || "",
+        email: source.email || "",
+        phoneNumber: source.phoneNumber || source.phone || "",
+        currency: source.currency || "INR",
+      });
     }
-  }, [user]);
+  }, [profileData, user]);
 
-  const avatarInitial = (profile.fullName?.[0] || profile.email?.[0] || "U").toUpperCase();
+  const avatarInitial = (profile.name?.[0] || profile.email?.[0] || "U").toUpperCase();
 
   // Security State
   const [security, setSecurity] = useState({
@@ -115,22 +113,22 @@ export default function Settings() {
     confirmPassword: "",
   });
 
-  // Notification Toggles
-  const [notifications, setNotifications] = useState({
-    budgetAlerts: true,
-    emiDueReminders: true,
-    weeklyDigest: true,
-    groupExpenseSplits: true,
-    securityLogins: true,
-    emailMarketing: false,
-  });
-
   // Handle Save Profile
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    setSaveSuccess(true);
-    toast.success("Profile preferences saved successfully!");
-    setTimeout(() => setSaveSuccess(false), 3000);
+    try {
+      await updateProfileMut({
+        name: profile.name.trim(),
+        phoneNumber: profile.phoneNumber.trim(),
+        currency: profile.currency,
+      });
+      setSaveSuccess(true);
+      toast.success("Profile preferences saved successfully!");
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || "Failed to update profile";
+      toast.error(errMsg);
+    }
   };
 
   // Open Add Category Modal
@@ -225,7 +223,7 @@ export default function Settings() {
             <span>Account &amp; System Settings</span>
           </h1>
           <p className="ms-greeting-subtitle mb-0">
-            Manage your personal profile, categories, budget limits, security credentials, and notification triggers.
+            Manage your personal profile, categories, budget allocations, and security credentials.
           </p>
         </div>
 
@@ -253,16 +251,11 @@ export default function Settings() {
                   <Nav.Link eventKey="security" className="ur-settings-nav-item">
                     <FiLock size={16} /> <span>Security &amp; Password</span>
                   </Nav.Link>
-                  <Nav.Link eventKey="notifications" className="ur-settings-nav-item">
-                    <FiBell size={16} /> <span>Alerts &amp; Notifications</span>
-                  </Nav.Link>
-                  <Nav.Link eventKey="data" className="ur-settings-nav-item">
-                    <FiShield size={16} /> <span>Data &amp; Privacy</span>
-                  </Nav.Link>
                 </Nav>
               </Card.Body>
             </Card>
           </Col>
+
 
           {/* Right Content Panels */}
           <Col xs={12} md={9}>
@@ -293,12 +286,9 @@ export default function Settings() {
                         {avatarInitial}
                       </div>
                       <div>
-                        <h6 className="fw-700 text-dark mb-0">{profile.fullName}</h6>
-                        <span className="text-muted fs-11.5px">{profile.email} • Primary Admin</span>
+                        <h6 className="fw-700 text-dark mb-0">{profile.name || "User"}</h6>
+                        <span className="text-muted fs-11.5px">{profile.email} • Primary Account</span>
                       </div>
-                      <Button variant="outline-primary" size="sm" className="ms-auto rounded-6px fs-11.5px">
-                        Change Avatar
-                      </Button>
                     </div>
 
                     <Form onSubmit={handleSaveProfile}>
@@ -309,23 +299,26 @@ export default function Settings() {
                             <Form.Control
                               type="text"
                               required
-                              value={profile.fullName}
-                              onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                              value={profile.name}
+                              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                               className="ur-form-input"
+                              placeholder="Enter your full name"
                             />
                           </Form.Group>
                         </Col>
 
                         <Col xs={12} md={6}>
                           <Form.Group className="mb-2">
-                            <Form.Label className="ur-form-label">Email Address *</Form.Label>
+                            <Form.Label className="ur-form-label">Email Address (Read-only)</Form.Label>
                             <Form.Control
                               type="email"
-                              required
+                              disabled
+                              readOnly
                               value={profile.email}
-                              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                              className="ur-form-input"
+                              className="ur-form-input bg-light opacity-75 cursor-not-allowed"
+                              placeholder="user@example.com"
                             />
+                            <Form.Text className="text-muted fs-11px">Email address cannot be changed.</Form.Text>
                           </Form.Group>
                         </Col>
 
@@ -334,9 +327,10 @@ export default function Settings() {
                             <Form.Label className="ur-form-label">Phone Number</Form.Label>
                             <Form.Control
                               type="text"
-                              value={profile.phone}
-                              onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                              value={profile.phoneNumber}
+                              onChange={(e) => setProfile({ ...profile, phoneNumber: e.target.value })}
                               className="ur-form-input"
+                              placeholder="+919999988888"
                             />
                           </Form.Group>
                         </Col>
@@ -350,7 +344,7 @@ export default function Settings() {
                                 { value: "USD", label: "$ USD (US Dollar)" },
                                 { value: "EUR", label: "€ EUR (Euro)" },
                                 { value: "GBP", label: "£ GBP (British Pound)" },
-                              ].find((c) => c.value === profile.currency)}
+                              ].find((c) => c.value === profile.currency) || { value: profile.currency, label: profile.currency }}
                               onChange={(opt) => setProfile({ ...profile, currency: opt.value })}
                               options={[
                                 { value: "INR", label: "₹ INR (Indian Rupee)" },
@@ -363,55 +357,17 @@ export default function Settings() {
                             />
                           </Form.Group>
                         </Col>
-
-                        <Col xs={12} md={6}>
-                          <Form.Group className="mb-2">
-                            <Form.Label className="ur-form-label">Timezone</Form.Label>
-                            <Select
-                              value={[
-                                { value: "Asia/Kolkata (IST +5:30)", label: "Asia/Kolkata (IST +5:30)" },
-                                { value: "America/New_York (EST)", label: "America/New_York (EST -5:00)" },
-                                { value: "Europe/London (GMT)", label: "Europe/London (GMT +0:00)" },
-                                { value: "Asia/Dubai (GST)", label: "Asia/Dubai (GST +4:00)" },
-                              ].find((t) => t.value === profile.timezone)}
-                              onChange={(opt) => setProfile({ ...profile, timezone: opt.value })}
-                              options={[
-                                { value: "Asia/Kolkata (IST +5:30)", label: "Asia/Kolkata (IST +5:30)" },
-                                { value: "America/New_York (EST)", label: "America/New_York (EST -5:00)" },
-                                { value: "Europe/London (GMT)", label: "Europe/London (GMT +0:00)" },
-                                { value: "Asia/Dubai (GST)", label: "Asia/Dubai (GST +4:00)" },
-                              ]}
-                              styles={formSelectStyles}
-                              menuPortalTarget={document.body}
-                            />
-                          </Form.Group>
-                        </Col>
-
-                        <Col xs={12} md={6}>
-                          <Form.Group className="mb-2">
-                            <Form.Label className="ur-form-label">Date Display Format</Form.Label>
-                            <Select
-                              value={[
-                                { value: "DD/MM/YYYY", label: "DD/MM/YYYY (e.g. 20/08/2026)" },
-                                { value: "MM/DD/YYYY", label: "MM/DD/YYYY (e.g. 08/20/2026)" },
-                                { value: "YYYY-MM-DD", label: "YYYY-MM-DD (e.g. 2026-08-20)" },
-                              ].find((d) => d.value === profile.dateFormat)}
-                              onChange={(opt) => setProfile({ ...profile, dateFormat: opt.value })}
-                              options={[
-                                { value: "DD/MM/YYYY", label: "DD/MM/YYYY (e.g. 20/08/2026)" },
-                                { value: "MM/DD/YYYY", label: "MM/DD/YYYY (e.g. 08/20/2026)" },
-                                { value: "YYYY-MM-DD", label: "YYYY-MM-DD (e.g. 2026-08-20)" },
-                              ]}
-                              styles={formSelectStyles}
-                              menuPortalTarget={document.body}
-                            />
-                          </Form.Group>
-                        </Col>
                       </Row>
 
                       <div className="pt-3 mt-3 border-top d-flex justify-content-end">
-                        <Button type="submit" variant="primary" size="sm" className="rounded-6px px-4 d-flex align-items-center gap-1">
-                          <FiSave size={14} /> Save Profile Changes
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          size="sm"
+                          disabled={profileUpdating || profileLoading}
+                          className="rounded-6px px-4 d-flex align-items-center gap-1"
+                        >
+                          <FiSave size={14} /> {profileUpdating ? "Saving..." : "Save Profile Changes"}
                         </Button>
                       </div>
                     </Form>
@@ -681,121 +637,11 @@ export default function Settings() {
                   </Card.Body>
                 </Card>
               </Tab.Pane>
-
-              {/* TAB 4: NOTIFICATIONS & ALERTS */}
-              <Tab.Pane eventKey="notifications">
-                <Card className="ms-premium-card border-0">
-                  <Card.Body className="p-4">
-                    <h5 className="fw-700 text-dark mb-1">Notification &amp; Real-Time Alert Triggers</h5>
-                    <p className="text-muted fs-12px mb-4">Choose which financial notifications you want to receive.</p>
-
-                    <div className="d-flex flex-column gap-3">
-                      <div className="d-flex justify-content-between align-items-center p-3 rounded-8px border bg-light">
-                        <div>
-                          <div className="fw-700 text-dark fs-13px">Budget Threshold Alerts (80% &amp; Over Limit)</div>
-                          <span className="text-muted fs-11.5px">Instant push alert when category spend approaches limit</span>
-                        </div>
-                        <Form.Check
-                          type="switch"
-                          id="notif-budget"
-                          checked={notifications.budgetAlerts}
-                          onChange={(e) => setNotifications({ ...notifications, budgetAlerts: e.target.checked })}
-                        />
-                      </div>
-
-                      <div className="d-flex justify-content-between align-items-center p-3 rounded-8px border bg-light">
-                        <div>
-                          <div className="fw-700 text-dark fs-13px">EMI &amp; Recurring Bill Due Reminders</div>
-                          <span className="text-muted fs-11.5px">Reminder alert 3 days prior to auto-debit due dates</span>
-                        </div>
-                        <Form.Check
-                          type="switch"
-                          id="notif-emi"
-                          checked={notifications.emiDueReminders}
-                          onChange={(e) => setNotifications({ ...notifications, emiDueReminders: e.target.checked })}
-                        />
-                      </div>
-
-                      <div className="d-flex justify-content-between align-items-center p-3 rounded-8px border bg-light">
-                        <div>
-                          <div className="fw-700 text-dark fs-13px">Groups Split &amp; Settlement Alerts</div>
-                          <span className="text-muted fs-11.5px">Notify when friends add shared expenses or settle balances</span>
-                        </div>
-                        <Form.Check
-                          type="switch"
-                          id="notif-split"
-                          checked={notifications.groupExpenseSplits}
-                          onChange={(e) => setNotifications({ ...notifications, groupExpenseSplits: e.target.checked })}
-                        />
-                      </div>
-
-                      <div className="d-flex justify-content-between align-items-center p-3 rounded-8px border bg-light">
-                        <div>
-                          <div className="fw-700 text-dark fs-13px">Weekly Financial Summary Email Digest</div>
-                          <span className="text-muted fs-11.5px">Comprehensive weekly cash flow analysis sent every Sunday</span>
-                        </div>
-                        <Form.Check
-                          type="switch"
-                          id="notif-digest"
-                          checked={notifications.weeklyDigest}
-                          onChange={(e) => setNotifications({ ...notifications, weeklyDigest: e.target.checked })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-3 mt-3 border-top d-flex justify-content-end">
-                      <Button variant="primary" size="sm" className="rounded-6px px-4" onClick={() => {
-                        setSaveSuccess(true);
-                        toast.success("Notification rules saved!");
-                      }}>
-                        Save Notification Rules
-                      </Button>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Tab.Pane>
-
-              {/* TAB 5: DATA & PRIVACY */}
-              <Tab.Pane eventKey="data">
-                <Card className="ms-premium-card border-0 mb-4">
-                  <Card.Body className="p-4">
-                    <h5 className="fw-700 text-dark mb-1">Data Backup &amp; Portability</h5>
-                    <p className="text-muted fs-12px mb-4">Download comprehensive encrypted copies of your transactions and ledger.</p>
-
-                    <div className="d-flex flex-wrap gap-2 mb-4">
-                      <Button variant="outline-primary" size="sm" className="rounded-8px px-3 py-2 d-flex align-items-center gap-2" onClick={() => toast.success("Exporting statements...")}>
-                        <FiDownload size={14} /> Export All Statements (CSV)
-                      </Button>
-                      <Button variant="outline-secondary" size="sm" className="rounded-8px px-3 py-2 d-flex align-items-center gap-2" onClick={() => toast.success("Generating ledger backup...")}>
-                        <FiDownload size={14} /> Backup Entire Ledger (JSON)
-                      </Button>
-                    </div>
-
-                    {/* Danger Zone */}
-                    <div className="p-4 rounded-10px border border-danger-subtle bg-danger-subtle bg-opacity-25 mt-4">
-                      <h6 className="fw-800 text-danger fs-14px mb-1 d-flex align-items-center gap-2">
-                        <FiTrash2 /> Danger Zone
-                      </h6>
-                      <p className="text-muted fs-12px mb-3">
-                        Permanently reset your transactions or delete your Waltrio profile. This action cannot be undone.
-                      </p>
-
-                      <div className="d-flex flex-wrap gap-2">
-                        <Button variant="outline-danger" size="sm" className="rounded-6px" onClick={() => toast.info("Reset action requested")}>
-                          Reset Demo Data
-                        </Button>
-                        <Button variant="danger" size="sm" className="rounded-6px" onClick={() => toast.error("Account deletion requires email confirmation")}>
-                          Delete Account Permanently
-                        </Button>
-                      </div>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Tab.Pane>
             </Tab.Content>
           </Col>
         </Row>
       </Tab.Container>
+
 
       {/* ===================================================================
           MODAL: ADD / EDIT CATEGORY

@@ -36,3 +36,18 @@ export const verifyOtp = ({ email, otp }) =>
  */
 export const getMe = () => api.get(ENDPOINTS.auth.me);
 
+/**
+ * Get user profile data.
+ * GET /v1/api/auth/profile
+ */
+export const getProfile = () => api.get(ENDPOINTS.auth.profile);
+
+/**
+ * Update user profile details.
+ * PUT /v1/api/auth/profile
+ * @param {{ name: string, phoneNumber: string, currency: string }} payload
+ */
+export const updateProfile = (payload) =>
+  api.put(ENDPOINTS.auth.profile, payload);
+
+

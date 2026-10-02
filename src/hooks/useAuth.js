@@ -8,6 +8,8 @@ import {
   resendOtp,
   verifyOtp,
   getMe,
+  getProfile,
+  updateProfile,
 } from "../api/auth.api";
 import { getToken, setToken } from "../api/client";
 
@@ -45,8 +47,7 @@ export function extractToken(payload) {
 }
 
 /**
- * Extract user object (name, email, id, etc.) from whatever shape /v1/api/auth/me returns.
- * Supports { Data: { email } }, { data: { email } }, { user: { email } }, etc.
+ * Extract user object (name, email, phoneNumber, currency, etc.) from whatever shape backend returns.
  */
 export function extractUserData(payload) {
   if (!payload || typeof payload !== "object") return null;
@@ -57,12 +58,16 @@ export function extractUserData(payload) {
     payload.data?.user ||
     payload.Data?.User ||
     payload.data?.User ||
+    payload.Data?.profile ||
+    payload.data?.profile ||
     payload.Data?.data ||
     payload.data?.Data ||
     payload.Data ||
     payload.data ||
     payload.user ||
     payload.User ||
+    payload.profile ||
+    payload.Profile ||
     payload.result ||
     payload.Result ||
     payload;
@@ -77,11 +82,17 @@ export function extractUserData(payload) {
   if (raw.Data && typeof raw.Data === "object" && !Array.isArray(raw.Data)) {
     raw = { ...raw, ...raw.Data };
   }
+  if (raw.data && typeof raw.data === "object" && !Array.isArray(raw.data)) {
+    raw = { ...raw, ...raw.data };
+  }
   if (raw.user && typeof raw.user === "object" && !Array.isArray(raw.user)) {
     raw = { ...raw, ...raw.user };
   }
   if (raw.User && typeof raw.User === "object" && !Array.isArray(raw.User)) {
     raw = { ...raw, ...raw.User };
+  }
+  if (raw.profile && typeof raw.profile === "object" && !Array.isArray(raw.profile)) {
+    raw = { ...raw, ...raw.profile };
   }
 
   const email =
@@ -108,16 +119,36 @@ export function extractUserData(payload) {
     (email ? email.split("@")[0] : "") ||
     "";
 
+  const phoneNumber =
+    raw.phoneNumber ||
+    raw.phone ||
+    raw.PhoneNumber ||
+    raw.Phone ||
+    raw.mobile ||
+    raw.mobileNumber ||
+    raw.contact ||
+    "";
+
+  const currency = raw.currency || raw.Currency || "INR";
+
   const userData = {
     ...raw,
     name,
     email,
+    phoneNumber,
+    phone: phoneNumber,
+    currency,
     Email: email,
     Name: name,
+    PhoneNumber: phoneNumber,
+    Currency: currency,
     Data: {
       ...raw,
       name,
       email,
+      phoneNumber,
+      phone: phoneNumber,
+      currency,
       Email: email,
       Name: name,
     },
@@ -125,6 +156,9 @@ export function extractUserData(payload) {
       ...raw,
       name,
       email,
+      phoneNumber,
+      phone: phoneNumber,
+      currency,
       Email: email,
       Name: name,
     },
@@ -139,6 +173,7 @@ export function extractUserData(payload) {
 
   return userData;
 }
+
 
 
 export const useRegister = (options = {}) =>
@@ -203,6 +238,39 @@ export const useMe = (options = {}) => {
     enabled: Boolean(token),
     staleTime: 5 * 60 * 1000,
     select: (data) => extractUserData(data),
+    ...options,
+  });
+};
+
+/**
+ * Fetch user profile via GET /v1/api/auth/profile.
+ */
+export const useProfile = (options = {}) => {
+  const token = getToken();
+  return useQuery({
+    queryKey: ["auth", "profile"],
+    queryFn: getProfile,
+    enabled: Boolean(token),
+    staleTime: 5 * 60 * 1000,
+    select: (data) => extractUserData(data),
+    ...options,
+  });
+};
+
+/**
+ * Update user profile via PUT /v1/api/auth/profile.
+ */
+export const useUpdateProfile = ({ onSuccess, ...options } = {}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["auth", "updateProfile"],
+    mutationFn: updateProfile,
+    onSuccess: (data, ...rest) => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      if (data) extractUserData(data);
+      onSuccess?.(data, ...rest);
+    },
     ...options,
   });
 };
