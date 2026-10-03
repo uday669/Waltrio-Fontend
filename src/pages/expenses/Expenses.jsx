@@ -43,7 +43,6 @@ import CommonDataTable from "../../components/common/DataTable";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useExpenses,
-  useExpenseSummary,
   useExpenseAnalytics,
   useCreateExpense,
   useUpdateExpense,
@@ -75,13 +74,67 @@ export default function Expenses() {
   // Monthly budget limit for the (computed) daily-pace metric.
   const monthlyBudgetLimit = 35000;
 
-  // Translate active filter mode into GET /expenses params
+  // Translate active filter mode into GET /expenses list query params:
+  // ?filter=day&day=3&month=10&year=2026 or ?filter=month&month=10&year=2026 or ?filter=year&year=2026
   const queryParams = useMemo(() => {
+    const base = {
+      category: selectedCategory,
+      status: selectedStatus,
+      page,
+      limit,
+    };
     if (selectedMode === "date" && selectedDate) {
-      return { date: selectedDate, category: selectedCategory, status: selectedStatus, page, limit };
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          ...base,
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
     }
-    return { month: selectedMonth, year: selectedYear, category: selectedCategory, status: selectedStatus, page, limit };
+    if (selectedMode === "year") {
+      return {
+        ...base,
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      ...base,
+      filter: "month",
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
   }, [selectedMode, selectedDate, selectedMonth, selectedYear, selectedCategory, selectedStatus, page, limit]);
+
+  // Analytics Query Params: ?filter=month&month=10&year=2026 or ?filter=day&day=3&month=10&year=2026 or ?filter=year&year=2026
+  const analyticsParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    if (selectedMode === "year") {
+      return {
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      filter: "month",
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
 
   // ---- Server data (TanStack Query) -------------------------------------
   const {
@@ -101,9 +154,7 @@ export default function Expenses() {
   const expenses = useMemo(() => expensesData || [], [expensesData]);
   const totalCount = expensesData?.total ?? expensesData?.pagination?.total ?? expenses.length;
 
-
-  const { data: summaryData } = useExpenseSummary(queryParams);
-  const { data: analyticsData } = useExpenseAnalytics({ range: timeRange, ...queryParams });
+  const { data: analyticsData } = useExpenseAnalytics(analyticsParams);
 
   // ---- Mutations --------------------------------------------------------
   const { mutate: createExpenseMut, isPending: creating } = useCreateExpense({
@@ -175,14 +226,14 @@ export default function Expenses() {
     }
   };
 
-  // Calculate Metrics
+  // Calculate Local Fallback Metrics
   const metrics = useMemo(() => {
     const total = expenses.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     const paid = expenses
       .filter((e) => e.status === "Paid")
       .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     const budgetPct = Math.min(100, Math.round((total / monthlyBudgetLimit) * 100));
-    const dailyAvg = Math.round(total / 20); // 20 days so far in month
+    const dailyAvg = Math.round(total / 20);
 
     // Top Category
     const catMap = {};
@@ -201,15 +252,6 @@ export default function Expenses() {
     return { total, paid, budgetPct, dailyAvg, topCat, maxVal };
   }, [expenses]);
 
-  // Prefer server summary (GET /expenses/summary); fall back to computed metrics.
-  const sx = summaryData || {};
-  const cards = {
-    total: Number(sx.totalOutflow ?? sx.totalExpenses ?? sx.total ?? metrics.total),
-    dailyAvg: Number(sx.dailyAverage ?? sx.dailyAvg ?? sx.averageDaily ?? metrics.dailyAvg),
-    topCat: sx.topCategory?.name ?? sx.largestCategory ?? (typeof sx.topCategory === "string" ? sx.topCategory : null) ?? metrics.topCat,
-    maxVal: Number(sx.topCategory?.amount ?? sx.topCategoryAmount ?? sx.maxVal ?? metrics.maxVal),
-  };
-
   // Filtered dataset for table
   const tableData = useMemo(() => {
     return expenses.filter((item) => {
@@ -224,22 +266,41 @@ export default function Expenses() {
     });
   }, [expenses, selectedCategory, selectedStatus, selectedMode, selectedDate]);
 
+  // Derive metric cards from GET /expenses/analytics
+  const a = analyticsData || {};
+  const largestCatName =
+    a.largestCostCategory?.category ||
+    (typeof a.largestCostCategory === "string" ? a.largestCostCategory : metrics.topCat);
+  const largestCatMeta = getCategoryMeta(largestCatName, "expense");
+
+  const cards = {
+    total: Number(a.totalOutflow ?? a.totalSpent ?? metrics.total),
+    dailyAvg: Number(a.dailyAverageSpend ?? metrics.dailyAvg),
+    topCat: largestCatName,
+    maxVal: Number(
+      a.largestCostCategory?.price ??
+        a.largestCostCategory?.total ??
+        metrics.maxVal
+    ),
+    totalEntries: a.totalEntries ?? tableData.length ?? expenses.length,
+  };
+
   // ---- Chart data from GET /expenses/analytics (fallback: compute) ------
   const EXP_DONUT_COLORS = ["#4f46e5", "#8b5cf6", "#f59e0b", "#ec4899", "#10b981", "#06b6d4", "#ef4444", "#d97706"];
   const { trendCats, trendSpent, trendTarget, donutItems } = useMemo(() => {
-    const a = analyticsData || {};
+    const an = analyticsData || {};
 
-    // Spending trend
+    // 1. Weekly Outflow vs Target Limit
     let tCats = [];
     let tSpent = [];
     let tTarget = [];
-    const tr = a.trend ?? a.spending ?? a.weekly ?? a.outflow ?? null;
+    const tr = an.weeklyOutflow ?? an.trend ?? an.spending ?? an.weekly ?? an.outflow ?? null;
     if (Array.isArray(tr) && tr.length) {
-      tCats = tr.map((p) => p.label ?? p.week ?? p.name ?? "");
-      tSpent = tr.map((p) => Number(p.spent ?? p.amount ?? p.value ?? 0));
-      tTarget = tr.map((p) => Number(p.target ?? p.budget ?? 0));
+      tCats = tr.map((p) => p.label ?? (p.week != null ? `Week ${p.week}` : p.name ?? ""));
+      tSpent = tr.map((p) => Number(p.actualSpent ?? p.spent ?? p.amount ?? p.value ?? 0));
+      tTarget = tr.map((p) => Number(p.targetLimit ?? p.target ?? p.budget ?? 0));
     } else if (expenses.length) {
-      // Last 6 months of outflow from real records.
+      // Fallback: Last 6 months of outflow from real records
       const byMonth = {};
       expenses.forEach((e) => {
         const d = new Date(e.date);
@@ -257,22 +318,27 @@ export default function Expenses() {
       }
     }
 
-    // Category donut
+    // 2. Spending Distribution Category Donut
     let dItems = [];
-    const dr = a.byCategory ?? a.categoryShare ?? a.distribution ?? a.categories ?? null;
-    if (Array.isArray(dr) && dr.length) {
-      const raw = dr.map((it) => ({
-        name: it.name ?? it.label ?? it.category ?? "Other",
-        value: Number(it.value ?? it.percentage ?? it.amount ?? 0),
-        color: it.color,
-      }));
-      const sum = raw.reduce((x, y) => x + y.value, 0);
-      const asPct = sum > 100 || sum === 0;
-      dItems = raw.map((it, i) => ({
-        name: it.name,
-        value: asPct && sum ? Math.round((it.value / sum) * 100) : Math.round(it.value),
-        color: it.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
-      }));
+    const distCats =
+      an.spendingDistribution?.categories ??
+      an.spendingDistribution ??
+      an.byCategory ??
+      an.categoryShare ??
+      an.categories ??
+      null;
+
+    if (Array.isArray(distCats) && distCats.length) {
+      dItems = distCats.map((it, i) => {
+        const catName = it.category ?? it.name ?? it.label ?? "Other";
+        const catMeta = getCategoryMeta(catName, "expense");
+        return {
+          name: catName,
+          value: Number(it.percentage ?? it.total ?? it.value ?? 0),
+          amount: Number(it.total ?? it.amount ?? 0),
+          color: catMeta?.color ?? it.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
+        };
+      });
     } else if (expenses.length) {
       const catMap = {};
       expenses.forEach((e) => {
@@ -283,12 +349,17 @@ export default function Expenses() {
         .sort((x, y) => y[1] - x[1])
         .map(([name, amount], i) => {
           const cat = getCategoryMeta(name, "expense");
-          return { name, value: Math.round((amount / total) * 100), color: cat?.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length] };
+          return {
+            name,
+            value: Math.round((amount / total) * 100),
+            amount,
+            color: cat?.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
+          };
         });
     }
 
     return { trendCats: tCats, trendSpent: tSpent, trendTarget: tTarget, donutItems: dItems };
-  }, [analyticsData, expenses, monthlyBudgetLimit]);
+  }, [analyticsData, expenses, monthlyBudgetLimit, getCategoryMeta]);
 
   const donutLabels = donutItems.map((d) => d.name);
   const donutColors = donutItems.map((d) => d.color);
@@ -660,7 +731,7 @@ export default function Expenses() {
       </div>
 
       {/* ===================================================================
-          2. TOP 4 METRICS CARDS
+          2. TOP 3 METRICS CARDS (Powered by /expenses/analytics)
           =================================================================== */}
       <Row className="g-3 mb-3">
         <Col xs={12} sm={6} xl={4}>
@@ -668,7 +739,9 @@ export default function Expenses() {
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <div className="ms-stat-title">Total Outflow (Month)</div>
+                  <div className="ms-stat-title">
+                    Total Outflow ({selectedMode === "date" ? "Day" : "Month"})
+                  </div>
                   <div className="ms-stat-val text-danger">
                     ₹{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
@@ -679,9 +752,11 @@ export default function Expenses() {
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="ms-trend-pill negative">
-                  <FiTrendingDown size={11} /> -3.8%
+                  <FiTrendingDown size={11} /> Outflow
                 </span>
-                <span className="ms-stat-sub-text">lower than budget pace</span>
+                <span className="ms-stat-sub-text">
+                  {cards.totalEntries} {cards.totalEntries === 1 ? "entry" : "entries"} recorded
+                </span>
               </div>
             </Card.Body>
           </Card>
@@ -702,8 +777,8 @@ export default function Expenses() {
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="text-dark fw-700 fs-11px">₹1,800 Target</span>
-                <span className="ms-stat-sub-text">Under target by ₹190</span>
+                <span className="text-dark fw-700 fs-11px">₹{cards.dailyAvg.toLocaleString("en-IN")}/day</span>
+                <span className="ms-stat-sub-text">Calculated average</span>
               </div>
             </Card.Body>
           </Card>
@@ -719,15 +794,15 @@ export default function Expenses() {
                     {cards.topCat}
                   </div>
                 </div>
-                <div className="ms-stat-icon-box" style={{ backgroundColor: "#eef2ff" }}>
-                  <FiHome size={19} color="#4f46e5" />
+                <div className="ms-stat-icon-box" style={{ backgroundColor: largestCatMeta?.bg || "#eef2ff" }}>
+                  {largestCatMeta?.icon || <FiHome size={19} color="#4f46e5" />}
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-danger fw-700 fs-11px">
                   ₹{cards.maxVal.toLocaleString("en-IN")}
                 </span>
-                <span className="ms-stat-sub-text">Housing &amp; Leases</span>
+                <span className="ms-stat-sub-text">Top spending area</span>
               </div>
             </Card.Body>
           </Card>
@@ -745,7 +820,9 @@ export default function Expenses() {
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <div>
                   <h5 className="ms-card-title mb-0">Weekly Outflow vs Target Limit</h5>
-                  <p className="text-muted fs-11px mb-0">Expense pacing across August 2026</p>
+                  <p className="text-muted fs-11px mb-0">
+                    Expense pacing across {selectedMode === "date" && selectedDate ? selectedDate : `${selectedMonthName} ${selectedYear}`}
+                  </p>
                 </div>
                 <div className="d-flex align-items-center gap-3 fs-11px">
                   <span className="d-flex align-items-center gap-1">
