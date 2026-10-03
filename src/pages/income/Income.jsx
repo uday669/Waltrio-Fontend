@@ -56,7 +56,8 @@ export default function Income() {
   const { incomeCategories, getCategoryMeta } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
-  const [timeRange, setTimeRange] = useState("monthly");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -66,13 +67,65 @@ export default function Income() {
     return MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Month";
   }, [selectedMonth]);
 
-  // Translate active filter mode into GET /incomes params
+  // Translate active filter mode into GET /incomes list query params:
+  // ?month=10&year=2026 or ?filter=day&day=3&month=10&year=2026 or ?filter=year&year=2026
   const queryParams = useMemo(() => {
+    const base = {
+      category: selectedCategory,
+      status: selectedStatus,
+      page,
+      limit,
+    };
     if (selectedMode === "date" && selectedDate) {
-      return { date: selectedDate, category: selectedCategory, status: selectedStatus };
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          ...base,
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
     }
-    return { month: selectedMonth, year: selectedYear, category: selectedCategory, status: selectedStatus };
-  }, [selectedMode, selectedDate, selectedMonth, selectedYear, selectedCategory, selectedStatus]);
+    if (selectedMode === "year") {
+      return {
+        ...base,
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      ...base,
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear, selectedCategory, selectedStatus, page, limit]);
+
+  // Summary & Analytics Query Params: ?month=10&year=2026 or ?filter=day&day=3&month=10&year=2026 or ?filter=year&year=2026
+  const summaryParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    if (selectedMode === "year") {
+      return {
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
 
   // ---- Server data (TanStack Query) -------------------------------------
   const {
@@ -92,12 +145,13 @@ export default function Income() {
 
   // Only ever show real API data (empty array while loading / when none).
   const incomes = useMemo(() => incomesData || [], [incomesData]);
+  const totalCount = incomesData?.total ?? incomesData?.pagination?.total ?? incomes.length;
 
   // GET /incomes/summary — the 4 metric cards.
-  const { data: summaryData } = useIncomeSummary(queryParams);
+  const { data: summaryData } = useIncomeSummary(summaryParams);
 
   // GET /incomes/analytics — data for the two charts.
-  const { data: analyticsData } = useIncomeAnalytics({ range: timeRange, ...queryParams });
+  const { data: analyticsData } = useIncomeAnalytics(summaryParams);
 
   // ---- Mutations --------------------------------------------------------
   const { mutate: createIncomeMut, isPending: creating } = useCreateIncome({
@@ -199,26 +253,6 @@ export default function Income() {
     return { total, thisMonth, avg, topCat, maxVal };
   }, [incomes]);
 
-  // Prefer server summary (GET /incomes/summary); fall back to computed metrics.
-  const s = summaryData || {};
-  const thisMonth = Number(s.thisMonth ?? s.monthlyInflow ?? s.currentMonth ?? metrics.thisMonth);
-  const total = Number(s.totalInflow ?? s.total ?? s.totalIncome ?? metrics.total);
-  const recurringInflow = Number(s.recurringInflow ?? s.recurring ?? thisMonth);
-  const cards = {
-    total,
-    thisMonth,
-    recurringInflow,
-    // Prefer server-provided percentage; else compute recurring share of total.
-    recurringPercentage: Number(
-      s.recurringPercentage ?? Math.round((recurringInflow / (total || 1)) * 100)
-    ),
-    avg: Number(s.averageIncome ?? s.average ?? s.avg ?? metrics.avg),
-    topCat:
-      s.topStream?.name ?? s.topCategory ?? (typeof s.topStream === "string" ? s.topStream : null) ?? metrics.topCat,
-    maxVal: Number(s.topStream?.amount ?? s.topAmount ?? s.maxVal ?? metrics.maxVal),
-    count: Number(s.count ?? s.totalRecords ?? incomes.length),
-  };
-
   // Filtered dataset for table
   const tableData = useMemo(() => {
     return incomes.filter((item) => {
@@ -232,6 +266,36 @@ export default function Income() {
       return matchCat && matchStatus && matchDate;
     });
   }, [incomes, selectedCategory, selectedStatus, selectedMode, selectedDate]);
+
+  // Prefer server summary (GET /incomes/summary); fall back to computed metrics.
+  const s = summaryData || {};
+  const total = Number(s.totalInflow ?? s.total ?? s.totalIncome ?? metrics.total);
+  const recurringInflow = Number(s.recurringInflow ?? s.recurring ?? metrics.thisMonth);
+  const topStreamCategory =
+    s.topRevenueStream?.category ||
+    s.topStream?.name ||
+    (typeof s.topStream === "string" ? s.topStream : null) ||
+    metrics.topCat;
+  const topStreamMeta = getCategoryMeta(topStreamCategory, "income");
+
+  const cards = {
+    total,
+    totalChange: s.totalInflowChange != null ? Number(s.totalInflowChange) : 14.8,
+    recurringInflow,
+    recurringPercentage: Number(
+      s.recurringPercentage ??
+        Math.round(((s.recurringInflow || metrics.thisMonth) / (s.totalInflow || metrics.total || 1)) * 100)
+    ),
+    avg: Number(s.averageIncome ?? s.average ?? s.avg ?? metrics.avg),
+    topCat: topStreamCategory,
+    maxVal: Number(
+      s.topRevenueStream?.price ??
+        s.topRevenueStream?.total ??
+        s.topStream?.amount ??
+        metrics.maxVal
+    ),
+    count: Number(s.totalEntries ?? s.count ?? totalCount),
+  };
 
   // ---- Chart data -------------------------------------------------------
   // Use GET /incomes/analytics when it returns a shape we recognize;
@@ -253,38 +317,20 @@ export default function Income() {
       tCats = trendRaw.labels;
       tData = trendRaw.data.map(Number);
     } else if (incomes.length) {
+      // Bucket by month; render the last 6 months (empty months as 0).
       const now = new Date();
-      if (timeRange === "quarterly") {
-        // Bucket by quarter; render the last 4 quarters.
-        const byQ = {};
-        incomes.forEach((i) => {
-          const d = new Date(i.date);
-          if (isNaN(d)) return;
-          const key = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
-          byQ[key] = (byQ[key] || 0) + (Number(i.amount) || 0);
-        });
-        for (let k = 3; k >= 0; k--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - k * 3, 1);
-          const q = Math.floor(d.getMonth() / 3) + 1;
-          const key = `${d.getFullYear()}-Q${q}`;
-          tCats.push(`Q${q} ${String(d.getFullYear()).slice(2)}`);
-          tData.push(byQ[key] || 0);
-        }
-      } else {
-        // Bucket by month; render the last 6 months (empty months as 0).
-        const byMonth = {};
-        incomes.forEach((i) => {
-          const d = new Date(i.date);
-          if (isNaN(d)) return;
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          byMonth[key] = (byMonth[key] || 0) + (Number(i.amount) || 0);
-        });
-        for (let k = 5; k >= 0; k--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          tCats.push(d.toLocaleString("en-US", { month: "short" }));
-          tData.push(byMonth[key] || 0);
-        }
+      const byMonth = {};
+      incomes.forEach((i) => {
+        const d = new Date(i.date);
+        if (isNaN(d)) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        byMonth[key] = (byMonth[key] || 0) + (Number(i.amount) || 0);
+      });
+      for (let k = 5; k >= 0; k--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        tCats.push(d.toLocaleString("en-US", { month: "short" }));
+        tData.push(byMonth[key] || 0);
       }
     }
 
@@ -326,7 +372,7 @@ export default function Income() {
     }
 
     return { trendCategories: tCats, trendData: tData, donutItems: dItems };
-  }, [analyticsData, incomes, timeRange]);
+  }, [analyticsData, incomes, getCategoryMeta]);
 
   const donutLabels = donutItems.map((d) => d.name);
   const donutSeries = donutItems.map((d) => d.value);
@@ -712,7 +758,7 @@ export default function Income() {
       </div>
 
       {/* ===================================================================
-          2. TOP 4 METRICS CARDS
+          2. TOP 4 METRICS CARDS (Powered by /incomes/summary)
           =================================================================== */}
       <Row className="g-3 mb-3">
         <Col xs={12} sm={6} xl={3}>
@@ -720,7 +766,9 @@ export default function Income() {
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <div className="ms-stat-title">Total Inflow (Month)</div>
+                  <div className="ms-stat-title">
+                    Total Inflow ({selectedMode === "date" ? "Day" : "Month"})
+                  </div>
                   <div className="ms-stat-val text-success">
                     ₹{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
@@ -730,10 +778,12 @@ export default function Income() {
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="ms-trend-pill positive">
-                  <FiTrendingUp size={11} /> +14.8%
+                <span className={`ms-trend-pill ${cards.totalChange >= 0 ? "positive" : "negative"}`}>
+                  <FiTrendingUp size={11} /> {cards.totalChange >= 0 ? `+${cards.totalChange}%` : `${cards.totalChange}%`}
                 </span>
-                <span className="ms-stat-sub-text">vs previous 30 days</span>
+                <span className="ms-stat-sub-text">
+                  {cards.count} {cards.count === 1 ? "entry" : "entries"} recorded
+                </span>
               </div>
             </Card.Body>
           </Card>
@@ -757,7 +807,7 @@ export default function Income() {
                 <span className="text-primary fw-700 fs-11px">
                   {cards.recurringPercentage}% of total
                 </span>
-                <span className="ms-stat-sub-text">Salary & Rentals</span>
+                <span className="ms-stat-sub-text">Consistent inflow</span>
               </div>
             </Card.Body>
           </Card>
@@ -778,10 +828,10 @@ export default function Income() {
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="ms-trend-pill positive">
-                  <FiTrendingUp size={11} /> +6.4%
+                <span className="text-dark fw-700 fs-11px">
+                  ₹{cards.avg.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
                 </span>
-                <span className="ms-stat-sub-text">Across {cards.count} records</span>
+                <span className="ms-stat-sub-text">Per transaction avg</span>
               </div>
             </Card.Body>
           </Card>
@@ -797,15 +847,15 @@ export default function Income() {
                     {cards.topCat}
                   </div>
                 </div>
-                <div className="ms-stat-icon-box" style={{ backgroundColor: "#ecfeff" }}>
-                  <FiBriefcase size={19} color="#06b6d4" />
+                <div className="ms-stat-icon-box" style={{ backgroundColor: topStreamMeta?.bg || "#ecfeff" }}>
+                  {topStreamMeta?.icon || <FiBriefcase size={19} color="#06b6d4" />}
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-dark fw-700 fs-11px">
                   ₹{cards.maxVal.toLocaleString("en-IN")}
                 </span>
-                <span className="ms-stat-sub-text">Primary Source</span>
+                <span className="ms-stat-sub-text">Top stream</span>
               </div>
             </Card.Body>
           </Card>
@@ -824,26 +874,8 @@ export default function Income() {
                 <div>
                   <h5 className="ms-card-title mb-0">Income Inflow Velocity</h5>
                   <p className="text-muted fs-11px mb-0">
-                    {timeRange === "quarterly" ? "Last 4 quarters progression" : "6-Month progression & projected growth"}
+                    6-Month progression &amp; projected growth
                   </p>
-                </div>
-                <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-6px">
-                  <Button
-                    variant={timeRange === "monthly" ? "white" : "transparent"}
-                    size="sm"
-                    className={`ur-chart-filter-btn ${timeRange === "monthly" ? "active" : ""}`}
-                    onClick={() => setTimeRange("monthly")}
-                  >
-                    Monthly
-                  </Button>
-                  <Button
-                    variant={timeRange === "quarterly" ? "white" : "transparent"}
-                    size="sm"
-                    className={`ur-chart-filter-btn ${timeRange === "quarterly" ? "active" : ""}`}
-                    onClick={() => setTimeRange("quarterly")}
-                  >
-                    Quarterly
-                  </Button>
                 </div>
               </div>
 
@@ -906,12 +938,19 @@ export default function Income() {
         keyField="id"
         loading={incomesLoading}
         title="All Income Transactions"
-        subtitle={`${selectedMonthName} ${selectedYear} • ${tableData.length} income log(s)`}
+        subtitle={`${selectedMonthName} ${selectedYear} • ${totalCount} income log(s)`}
         searchPlaceholder="Search by payer, source, or reference..."
         selectableRows={true}
         initialSortField="date"
         initialSortOrder="desc"
-        defaultPageSize={10}
+        defaultPageSize={limit}
+        totalRows={totalCount}
+        page={page}
+        onPageChange={(p) => setPage(p)}
+        onPageSizeChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
         onBulkDelete={handleBulkDelete}
         exportFileName="Income_Statements"
         filters={
@@ -922,7 +961,10 @@ export default function Income() {
                 { value: "all", label: "All Categories" },
                 ...incomeCategories.map((c) => ({ value: c.name, label: c.name })),
               ].find((c) => c.value === selectedCategory) || { value: "all", label: "All Categories" }}
-              onChange={(opt) => setSelectedCategory(opt ? opt.value : "all")}
+              onChange={(opt) => {
+                setSelectedCategory(opt ? opt.value : "all");
+                setPage(1);
+              }}
               options={[
                 { value: "all", label: "All Categories" },
                 ...incomeCategories.map((c) => ({ value: c.name, label: c.name })),

@@ -20,6 +20,7 @@ export function unwrap(res) {
   if (res == null) return res;
   if (Array.isArray(res)) return res;
   if (res.data !== undefined) return res.data;
+  if (res.Data !== undefined) return res.Data;
   if (res.result !== undefined) return res.result;
   if (res.incomes !== undefined) return res.incomes;
   return res;
