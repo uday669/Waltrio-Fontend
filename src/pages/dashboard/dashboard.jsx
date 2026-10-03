@@ -157,16 +157,15 @@ export default function Dashboard() {
     return { month: selectedMonth, year: selectedYear };
   }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
 
-  // GET /dashboard/overview with filters
-  const { data: overview } = useDashboardOverview(dashboardParams);
+  // GET /dashboard/overview without filter
+  const { data: overview } = useDashboardOverview();
   const c = overview?.cards || {};
 
-  // GET /dashboard/total-balance — dedicated source for the Total Balance card.
+  // GET /dashboard/total-balance without filter
   const { data: totalBalanceData } = useTotalBalance();
-  // Accept a bare number or an object with common field names.
   const tb =
     typeof totalBalanceData === "number" ? { totalBalance: totalBalanceData } : totalBalanceData || {};
-  const totalBalance = tb.totalBalance ?? tb.balance ?? tb.amount ?? c.totalBalance;
+  const totalBalance = tb.totalBalance ?? tb.balance ?? tb.amount ?? c.totalBalance ?? overview?.totalBalance ?? 0;
   const totalBalanceChange = tb.totalBalanceChange ?? tb.change ?? c.totalBalanceChange ?? 0;
   const ive = overview?.incomeVsExpenses || {};
   const expCats = overview?.expenseCategories || {};
@@ -200,32 +199,43 @@ export default function Dashboard() {
   }, [budgetCaps]);
 
   // Budget summary strip (limit / spent / available / %) — computed from the
-  // same caps so it reconciles with the allocations list; falls back to the
-  // overview's budgetOverview when there are no caps.
+  // overview budgetOverview or category allocations.
   const budgetSummary = useMemo(() => {
-    if (categoryAllocations.length === 0) {
-      const limit = Number(budget.monthlyLimit || 0);
-      const spent = Number(budget.spent || 0);
-      return {
-        limit,
-        spent,
-        available: Number(budget.available ?? Math.max(0, limit - spent)),
-        pct: Number(budget.percentageUsed ?? (limit > 0 ? Math.round((spent / limit) * 100) : 0)),
-      };
-    }
-    const limit = categoryAllocations.reduce((a, c) => a + c.allocated, 0);
-    const spent = categoryAllocations.reduce((a, c) => a + c.spent, 0);
+    const limit = Number(budget.monthlyLimit ?? categoryAllocations.reduce((a, c) => a + c.allocated, 0));
+    const spent = Number(budget.spent ?? categoryAllocations.reduce((a, c) => a + c.spent, 0));
+    const available = Number(budget.available ?? Math.max(0, limit - spent));
+    const pct = Number(budget.percentageUsed ?? (limit > 0 ? Math.round((spent / limit) * 100) : 0));
+    const onTrack = budget.onTrack ?? pct <= 100;
     return {
       limit,
       spent,
-      available: Math.max(0, limit - spent),
-      pct: limit > 0 ? Math.round((spent / limit) * 100) : 0,
+      available,
+      pct,
+      onTrack,
+      dailyAverageSpend: budget.dailyAverageSpend,
+      dailyTarget: budget.dailyTarget,
+      dailyTargetDelta: budget.dailyTargetDelta,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryAllocations, budget.monthlyLimit, budget.spent, budget.available, budget.percentageUsed]);
+  }, [categoryAllocations, budget]);
   const goals = overview?.savingsGoals || [];
 
-  // 1. Top 4 Stat Cards — from data.cards
+  // Card values with full fallbacks
+  const incomeObj = c.totalIncome ?? overview?.totalIncome ?? tb.totalIncome ?? {};
+  const incomeAmt = typeof incomeObj === "number" ? incomeObj : (incomeObj.amount ?? 0);
+  const incomeChange = incomeObj.change ?? 0;
+  const incomeVsPrev = incomeObj.vsPreviousMonth ?? 0;
+
+  const expenseObj = c.totalExpenses ?? overview?.totalExpenses ?? tb.totalExpenses ?? {};
+  const expenseAmt = typeof expenseObj === "number" ? expenseObj : (expenseObj.amount ?? 0);
+  const expenseChange = expenseObj.change ?? 0;
+  const expenseBudgetPct = expenseObj.budgetUsedPercentage ?? budgetSummary.pct ?? 0;
+
+  const savingsObj = c.totalSavings ?? overview?.totalSavings ?? tb.totalSavings ?? {};
+  const savingsAmt = typeof savingsObj === "number" ? savingsObj : (savingsObj.amount ?? Math.max(0, Number(incomeAmt) - Number(expenseAmt)));
+  const savingsChange = savingsObj.change ?? 0;
+  const savingsRate = savingsObj.netSavingsRate ?? (incomeAmt > 0 ? Math.round(((incomeAmt - expenseAmt) / incomeAmt) * 100) : 0);
+
+  // 1. Top 4 Stat Cards — Total Balance, Income, Expenses, Savings
   const stats = [
     {
       title: "Total Balance",
@@ -238,30 +248,30 @@ export default function Dashboard() {
     },
     {
       title: "Total Income",
-      value: fmtCurrency(c.totalIncome?.amount),
-      change: fmtPct(c.totalIncome?.change),
-      isPositive: Number(c.totalIncome?.change ?? 0) >= 0,
+      value: fmtCurrency(incomeAmt),
+      change: fmtPct(incomeChange),
+      isPositive: Number(incomeChange) >= 0,
       icon: <FiTrendingUp size={20} color="#10b981" />,
       iconBg: "#ecfdf5",
-      sub: `${fmtCurrency(c.totalIncome?.vsPreviousMonth)} vs last month`,
+      sub: `${fmtCurrency(incomeVsPrev)} vs last month`,
     },
     {
       title: "Total Expenses",
-      value: fmtCurrency(c.totalExpenses?.amount),
-      change: fmtPct(c.totalExpenses?.change),
-      isPositive: Number(c.totalExpenses?.change ?? 0) <= 0,
+      value: fmtCurrency(expenseAmt),
+      change: fmtPct(expenseChange),
+      isPositive: Number(expenseChange) <= 0,
       icon: <FiArrowDownLeft size={20} color="#ef4444" />,
       iconBg: "#fff1f2",
-      sub: `${Number(c.totalExpenses?.budgetUsedPercentage ?? 0)}% of monthly budget used`,
+      sub: `${Number(expenseBudgetPct)}% of monthly budget used`,
     },
     {
       title: "Total Savings",
-      value: fmtCurrency(c.totalSavings?.amount),
-      change: fmtPct(c.totalSavings?.change),
-      isPositive: Number(c.totalSavings?.change ?? 0) >= 0,
+      value: fmtCurrency(savingsAmt),
+      change: fmtPct(savingsChange),
+      isPositive: Number(savingsChange) >= 0,
       icon: <FaPiggyBank size={18} color="#4f46e5" />,
       iconBg: "#eef2ff",
-      sub: `${Number(c.totalSavings?.netSavingsRate ?? 0)}% net savings rate`,
+      sub: `${Number(savingsRate)}% net savings rate`,
     },
   ];
 
