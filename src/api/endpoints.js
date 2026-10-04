@@ -26,8 +26,8 @@ export const ENDPOINTS = {
     byId: (id) => `/expenses/${id}`,
   },
   dashboard: {
-    overview: "/dashboard/overview",
-    totalBalance: "/dashboard/total-balance",
+    yearSummary: "/dashboard/year-summary",
+    analyticsYear: "/dashboard/analytics-year",
   },
   budget: {
     // Whole budgets page (cards + chart + caps). POST/PUT here upsert a cap.

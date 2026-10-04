@@ -33,7 +33,7 @@ import { IoWalletOutline } from "react-icons/io5";
 import { FaPiggyBank } from "react-icons/fa";
 import { BsBank2, BsStars } from "react-icons/bs";
 import { SiGooglepay, SiPhonepe } from "react-icons/si";
-import { useDashboardOverview, useTotalBalance } from "../../hooks/useDashboard";
+import { useDashboardYearSummary, useDashboardAnalyticsYear } from "../../hooks/useDashboard";
 import { useBudgetCategories } from "../../hooks/useBudgets";
 import { useCreateIncome } from "../../hooks/useIncomes";
 import { useCreateExpense } from "../../hooks/useExpenses";
@@ -53,8 +53,6 @@ const fmtCurrency = (n) =>
   `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 const fmtPct = (v) => `${Number(v) >= 0 ? "+" : ""}${Number(v || 0)}%`;
 
-// Palette reused for the expense-category donut.
-const DONUT_COLORS = ["#4f46e5", "#8b5cf6", "#f59e0b", "#10b981", "#06b6d4", "#94a3b8", "#ec4899", "#e11d48"];
 
 // Per-category visuals for the Budget Overview "Category Allocations" list.
 const BUDGET_CAT_META = {
@@ -82,6 +80,10 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedMode, setSelectedMode] = useState("month");
   const selectedMonthName = MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Current Month";
+
+  // Income vs Expenses Chart Timeframe Filter State: "6m" | "12m" | "year"
+  const [chartTimeframe, setChartTimeframe] = useState("12m");
+  const [chartYear, setChartYear] = useState(new Date().getFullYear());
 
   // ---- Quick-add modals (Add Income / Add Expense) ----------------------
   const [showIncomeModal, setShowIncomeModal] = useState(false);
@@ -151,25 +153,54 @@ export default function Dashboard() {
     });
   };
 
-  // Dashboard Query Params (Month / Specific Date)
-  const dashboardParams = useMemo(() => {
-    if (selectedMode === "date" && selectedDate) return { date: selectedDate };
-    return { month: selectedMonth, year: selectedYear };
+  // Dashboard Query Params for GET /v1/api/dashboard/year-summary
+  const summaryParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    if (selectedMode === "year") {
+      return {
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      filter: "month",
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
   }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
 
-  // GET /dashboard/overview without filter
-  const { data: overview } = useDashboardOverview();
-  const c = overview?.cards || {};
+  // Analytics params for GET /v1/api/dashboard/analytics-year
+  const analyticsParams = useMemo(() => {
+    if (chartTimeframe === "6m") {
+      return { months: 6 };
+    }
+    if (chartTimeframe === "year") {
+      return { filter: "year", year: Number(chartYear) };
+    }
+    return {};
+  }, [chartTimeframe, chartYear]);
 
-  // GET /dashboard/total-balance without filter
-  const { data: totalBalanceData } = useTotalBalance();
-  const tb =
-    typeof totalBalanceData === "number" ? { totalBalance: totalBalanceData } : totalBalanceData || {};
-  const totalBalance = tb.totalBalance ?? tb.balance ?? tb.amount ?? c.totalBalance ?? overview?.totalBalance ?? 0;
-  const totalBalanceChange = tb.totalBalanceChange ?? tb.change ?? c.totalBalanceChange ?? 0;
-  const ive = overview?.incomeVsExpenses || {};
-  const expCats = overview?.expenseCategories || {};
-  const budget = overview?.budgetOverview || {};
+  // GET /dashboard/year-summary
+  const { data: summaryData } = useDashboardYearSummary(summaryParams);
+
+  // GET /dashboard/analytics-year
+  const { data: analyticsData } = useDashboardAnalyticsYear(analyticsParams);
+
+  const totalBalance = summaryData?.totalBalance ?? 0;
+  const income = summaryData?.totalIncome || {};
+  const expense = summaryData?.totalExpenses || {};
+  const savings = summaryData?.totalSavings || {};
+  const budget = summaryData?.budgetOverview || {};
 
   // GET /budget/category — powers the Category Allocations list below.
   const { data: budgetCaps } = useBudgetCategories();
@@ -217,69 +248,56 @@ export default function Dashboard() {
       dailyTargetDelta: budget.dailyTargetDelta,
     };
   }, [categoryAllocations, budget]);
-  const goals = overview?.savingsGoals || [];
-
-  // Card values with full fallbacks
-  const incomeObj = c.totalIncome ?? overview?.totalIncome ?? tb.totalIncome ?? {};
-  const incomeAmt = typeof incomeObj === "number" ? incomeObj : (incomeObj.amount ?? 0);
-  const incomeChange = incomeObj.change ?? 0;
-  const incomeVsPrev = incomeObj.vsPreviousMonth ?? 0;
-
-  const expenseObj = c.totalExpenses ?? overview?.totalExpenses ?? tb.totalExpenses ?? {};
-  const expenseAmt = typeof expenseObj === "number" ? expenseObj : (expenseObj.amount ?? 0);
-  const expenseChange = expenseObj.change ?? 0;
-  const expenseBudgetPct = expenseObj.budgetUsedPercentage ?? budgetSummary.pct ?? 0;
-
-  const savingsObj = c.totalSavings ?? overview?.totalSavings ?? tb.totalSavings ?? {};
-  const savingsAmt = typeof savingsObj === "number" ? savingsObj : (savingsObj.amount ?? Math.max(0, Number(incomeAmt) - Number(expenseAmt)));
-  const savingsChange = savingsObj.change ?? 0;
-  const savingsRate = savingsObj.netSavingsRate ?? (incomeAmt > 0 ? Math.round(((incomeAmt - expenseAmt) / incomeAmt) * 100) : 0);
+  const goals = summaryData?.savingsGoals || [];
 
   // 1. Top 4 Stat Cards — Total Balance, Income, Expenses, Savings
   const stats = [
     {
       title: "Total Balance",
       value: fmtCurrency(totalBalance),
-      change: fmtPct(totalBalanceChange),
-      isPositive: Number(totalBalanceChange) >= 0,
+      change: fmtPct(income.change ?? 0),
+      isPositive: Number(income.change ?? 0) >= 0,
       icon: <IoWalletOutline size={20} color="#4f46e5" />,
       iconBg: "#eef2ff",
       sub: "Available across accounts",
     },
     {
       title: "Total Income",
-      value: fmtCurrency(incomeAmt),
-      change: fmtPct(incomeChange),
-      isPositive: Number(incomeChange) >= 0,
+      value: fmtCurrency(income.amount),
+      change: fmtPct(income.change),
+      isPositive: Number(income.change ?? 0) >= 0,
       icon: <FiTrendingUp size={20} color="#10b981" />,
       iconBg: "#ecfdf5",
-      sub: `${fmtCurrency(incomeVsPrev)} vs last month`,
+      sub: `${fmtCurrency(income.vsPrevious ?? 0)} vs previous`,
     },
     {
       title: "Total Expenses",
-      value: fmtCurrency(expenseAmt),
-      change: fmtPct(expenseChange),
-      isPositive: Number(expenseChange) <= 0,
+      value: fmtCurrency(expense.amount),
+      change: fmtPct(expense.change),
+      isPositive: Number(expense.change ?? 0) <= 0,
       icon: <FiArrowDownLeft size={20} color="#ef4444" />,
       iconBg: "#fff1f2",
-      sub: `${Number(expenseBudgetPct)}% of monthly budget used`,
+      sub: `${Number(expense.budgetUsedPercentage ?? 0)}% of budget used`,
     },
     {
       title: "Total Savings",
-      value: fmtCurrency(savingsAmt),
-      change: fmtPct(savingsChange),
-      isPositive: Number(savingsChange) >= 0,
+      value: fmtCurrency(savings.amount),
+      change: fmtPct(savings.change),
+      isPositive: Number(savings.change ?? 0) >= 0,
       icon: <FaPiggyBank size={18} color="#4f46e5" />,
       iconBg: "#eef2ff",
-      sub: `${Number(savingsRate)}% net savings rate`,
+      sub: `${Number(savings.netSavingsRate ?? 0)}% net savings rate`,
     },
   ];
 
-  // 2. Bar Chart: Income vs Expenses — from incomeVsExpenses.weekly
-  const weekly = Array.isArray(ive.weekly) ? ive.weekly : [];
-  const barCategories = weekly.map((w) => w.label);
-  const barIncome = weekly.map((w) => Number(w.income || 0));
-  const barExpenses = weekly.map((w) => Number(w.expenses || 0));
+  // 2. Bar Chart: Income vs Expenses — from analyticsYear.incomeVsExpenses.monthly
+  const iveData = analyticsData?.incomeVsExpenses || {};
+  const monthly = Array.isArray(iveData.monthly) ? iveData.monthly : [];
+  const barCategories = monthly.map((m) => m.shortLabel || m.label);
+  const barIncome = monthly.map((m) => Number(m.income || 0));
+  const barExpenses = monthly.map((m) => Number(m.expenses || 0));
+  const iveTotalIncome = Number(iveData.totalIncome || barIncome.reduce((a, b) => a + b, 0));
+  const iveTotalExpenses = Number(iveData.totalExpenses || barExpenses.reduce((a, b) => a + b, 0));
 
   const barChartOptions = {
     chart: {
@@ -334,50 +352,7 @@ export default function Dashboard() {
     { name: "Expenses", data: barExpenses },
   ];
 
-  // 3. Donut Chart: Expense Categories — from expenseCategories.categories
-  const expCatList = Array.isArray(expCats.categories) ? expCats.categories : [];
-  const expTotal = Number(expCats.total || 0);
-  const donutLabels = expCatList.map((x) => x.category);
-  const donutColors = expCatList.map((x, i) => x.color || DONUT_COLORS[i % DONUT_COLORS.length]);
-  const donutSeries = expCatList.map((x) => Number(x.percentage || 0));
-  const categoryLegend = expCatList.map((x, i) => ({
-    name: x.category,
-    percent: `${Number(x.percentage || 0)}%`,
-    amount: `₹${Number(x.total || 0).toLocaleString("en-IN")}`,
-    color: x.color || DONUT_COLORS[i % DONUT_COLORS.length],
-  }));
-
-  const donutOptions = {
-    chart: {
-      type: "donut",
-      height: 230,
-      fontFamily: "inherit",
-      parentHeightOffset: 0,
-    },
-    labels: donutLabels,
-    colors: donutColors,
-    dataLabels: {
-      enabled: true,
-      formatter: (val) => `${Math.round(val)}%`,
-      style: { fontSize: "11px", fontWeight: "700", colors: ["#ffffff"] },
-      dropShadow: { enabled: false },
-    },
-    plotOptions: {
-      pie: {
-        donut: {
-          size: "62%",
-        },
-      },
-    },
-    legend: { show: false },
-    stroke: { width: 2, colors: ["#ffffff"] },
-    tooltip: {
-      theme: "light",
-      y: { formatter: (val) => `${val}% (₹${((val / 100) * expTotal).toFixed(0)})` },
-    },
-  };
-
-  // 4. Savings Goals — from data.savingsGoals
+  // 3. Savings Goals — from data.savingsGoals
   const GOAL_GRADIENTS = [
     "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)",
     "linear-gradient(90deg, #10b981 0%, #34d399 100%)",
@@ -559,18 +534,63 @@ export default function Dashboard() {
       </Row>
 
       {/* ===================================================================
-          PAIR 1: INCOME VS EXPENSES & EXPENSE CATEGORIES
+          PAIR 1: INCOME VS EXPENSES
           =================================================================== */}
       <Row className="g-3 mb-3">
         {/* Income vs Expenses Bar Chart */}
-        <Col xs={12} lg={6}>
+        <Col xs={12}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div>
-                <div className="d-flex justify-content-between align-items-center mb-1">
+                <div className="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                   <div>
                     <h5 className="ms-card-title mb-0">Income vs Expenses</h5>
                     <p className="text-muted fs-11px mb-0">Cash inflows vs outflows trend</p>
+                  </div>
+
+                  {/* Filter: 6 Months, 12 Months, Year */}
+                  <div className="d-flex align-items-center gap-1">
+                    <div className="btn-group btn-group-sm" role="group" aria-label="Timeframe">
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${chartTimeframe === "6m" ? "btn-primary text-white fw-600" : "btn-light text-secondary border"}`}
+                        style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px 0 0 6px" }}
+                        onClick={() => setChartTimeframe("6m")}
+                      >
+                        6 Months
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${chartTimeframe === "12m" ? "btn-primary text-white fw-600" : "btn-light text-secondary border"}`}
+                        style={{ fontSize: "11px", padding: "2px 8px", borderRadius: chartTimeframe === "year" ? "0" : (chartTimeframe !== "6m" && chartTimeframe !== "12m" ? "0" : undefined) }}
+                        onClick={() => setChartTimeframe("12m")}
+                      >
+                        12 Months
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${chartTimeframe === "year" ? "btn-primary text-white fw-600" : "btn-light text-secondary border"}`}
+                        style={{ fontSize: "11px", padding: "2px 8px", borderRadius: chartTimeframe === "year" ? "0" : "0 6px 6px 0" }}
+                        onClick={() => setChartTimeframe("year")}
+                      >
+                        Year
+                      </button>
+                    </div>
+                    {chartTimeframe === "year" && (
+                      <Form.Select
+                        size="sm"
+                        value={chartYear}
+                        onChange={(e) => setChartYear(Number(e.target.value))}
+                        style={{ width: "80px", fontSize: "11px", padding: "2px 6px", height: "26px", borderRadius: "0 6px 6px 0" }}
+                        className="border"
+                      >
+                        {[2024, 2025, 2026, 2027, 2028].map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    )}
                   </div>
                 </div>
 
@@ -581,14 +601,14 @@ export default function Dashboard() {
                       className="ms-legend-square"
                       style={{ backgroundColor: "#4f46e5" }}
                     ></span>
-                    <span className="fw-600 text-dark">Income: ₹{Number(ive.totalIncome || 0).toLocaleString("en-IN")}</span>
+                    <span className="fw-600 text-dark">Income: ₹{Number(iveTotalIncome || 0).toLocaleString("en-IN")}</span>
                   </span>
                   <span className="d-flex align-items-center gap-1">
                     <span
                       className="ms-legend-square"
                       style={{ backgroundColor: "#f43f5e" }}
                     ></span>
-                    <span className="fw-600 text-dark">Expenses: ₹{Number(ive.totalExpenses || 0).toLocaleString("en-IN")}</span>
+                    <span className="fw-600 text-dark">Expenses: ₹{Number(iveTotalExpenses || 0).toLocaleString("en-IN")}</span>
                   </span>
                 </div>
               </div>
@@ -598,60 +618,9 @@ export default function Dashboard() {
                   options={barChartOptions}
                   series={barChartSeries}
                   type="bar"
-                  height={250}
+                  height={270}
                 />
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        {/* Expense Categories Donut Chart */}
-        <Col xs={12} lg={6}>
-          <Card className="ms-premium-card h-100 border-0">
-            <Card.Body className="p-3 d-flex flex-column justify-content-between">
-              <div>
-                <h5 className="ms-card-title mb-0">Expense Categories</h5>
-                <p className="text-muted fs-11px mb-0">Breakdown of ₹{expTotal.toLocaleString("en-IN")} total spending</p>
-              </div>
-
-              {donutSeries.length === 0 ? (
-                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 230 }}>
-                  No expense data to show yet.
-                </div>
-              ) : (
-              <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
-                <div style={{ width: "210px", height: "230px" }}>
-                  <Chart
-                    options={donutOptions}
-                    series={donutSeries}
-                    type="donut"
-                    height={230}
-                  />
-                </div>
-
-                {/* Legend List */}
-                <div className="ms-donut-legend ps-2" style={{ minWidth: "170px" }}>
-                  {categoryLegend.map((cat, idx) => (
-                    <div
-                      key={idx}
-                      className="d-flex align-items-center justify-content-between mb-2 fs-11.5px"
-                    >
-                      <div className="d-flex align-items-center gap-2">
-                        <span
-                          className="ms-legend-dot"
-                          style={{ backgroundColor: cat.color }}
-                        ></span>
-                        <span className="text-dark fw-600">{cat.name}</span>
-                      </div>
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="text-muted fs-11px">{cat.amount}</span>
-                        <span className="fw-700 text-dark">{cat.percent}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              )}
             </Card.Body>
           </Card>
         </Col>

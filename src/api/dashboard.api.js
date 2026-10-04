@@ -10,12 +10,10 @@ function toQuery(params = {}) {
   return `?${new URLSearchParams(usable).toString()}`;
 }
 
-// GET /dashboard/overview — overview data without mandatory filter
-export const getDashboardOverview = (params) => {
-  const query = params ? toQuery(params) : "";
-  return api.get(`${ENDPOINTS.dashboard.overview}${query}`, { auth: true });
-};
+// GET /dashboard/year-summary — top metric cards & period summary
+export const getDashboardYearSummary = (params = {}) =>
+  api.get(`${ENDPOINTS.dashboard.yearSummary}${toQuery(params)}`, { auth: true });
 
-// GET /dashboard/total-balance — the Total Balance stat card
-export const getTotalBalance = () =>
-  api.get(ENDPOINTS.dashboard.totalBalance, { auth: true });
+// GET /dashboard/analytics-year — monthly trends for income vs expenses
+export const getDashboardAnalyticsYear = (params = {}) =>
+  api.get(`${ENDPOINTS.dashboard.analyticsYear}${toQuery(params)}`, { auth: true });
