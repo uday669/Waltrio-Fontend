@@ -63,16 +63,20 @@ export default function Login() {
     <Auth>
       <div className="after-lg-card">
         <div className="mb-4 text-center text-sm-start">
-          <h2 className="auth-title">Welcome Back! 👋</h2>
+          <div className="auth-badge-pill">
+            <span className="status-dot"></span>
+            <span>Secure Sign In</span>
+          </div>
+          <h2 className="auth-title">Welcome back 👋</h2>
           <p className="auth-subtitle">
-            Sign in to continue to your Waltrio account
+            Enter your credentials to access your financial portfolio
           </p>
         </div>
 
         {verified && !error && (
-          <div className="d-flex align-items-center gap-2 p-2 px-3 rounded-3 bg-success-subtle text-success fs-13px mb-3">
+          <div className="d-flex align-items-center gap-2 p-2 px-3 rounded-3 bg-success-subtle text-success fs-13px mb-3 border border-success-subtle">
             <FiCheckCircle size={16} />
-            <span>Email verified! Please sign in to continue.</span>
+            <span className="fw-600">Email verified! Please sign in to continue.</span>
           </div>
         )}
 
@@ -140,7 +144,7 @@ export default function Login() {
 
             {/* Remember Me & Forgot Password */}
             <Col xs={12}>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 fs-14px">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 fs-13px">
                 <div className="form-check d-flex align-items-center gap-2 mb-0">
                   <input
                     className="form-check-input"
@@ -150,29 +154,32 @@ export default function Login() {
                     checked={formData.rememberMe}
                     onChange={handleChange}
                   />
-                  <label className="form-check-label fs-14px ur-text-0B2538 cursor-pointer" htmlFor="rememberMe">
+                  <label className="form-check-label fs-13px text-dark fw-500 cursor-pointer" htmlFor="rememberMe">
                     Remember me
                   </label>
                 </div>
-                <Link to="/otp" className="link-theme fs-14px">
-                  Forgot Password?
+                <Link to="/otp" className="link-theme fs-13px fw-600">
+                  Forgot password?
                 </Link>
               </div>
             </Col>
 
             {/* Submit Button */}
-            <Col xs={12} className="pt-2">
+            <Col xs={12} className="pt-1">
               <button
                 type="submit"
                 className="btn btn-theme w-100"
                 disabled={loading}
               >
                 {loading ? (
-                  <span>Signing In...</span>
+                  <span className="d-flex align-items-center gap-2">
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Signing In...</span>
+                  </span>
                 ) : (
                   <>
-                    <span>Sign In</span>
-                    <FiArrowRight size={18} />
+                    <span>Sign In to Account</span>
+                    <FiArrowRight size={17} />
                   </>
                 )}
               </button>
@@ -181,16 +188,16 @@ export default function Login() {
             {/* Divider */}
             <Col xs={12}>
               <div className="d-flex align-items-center gap-2 my-1">
-                <hr className="ur-border-1942C31A w-100 my-0" />
-                <span className="ur-text-5E5E5E fs-12px text-uppercase fw-600">OR</span>
-                <hr className="ur-border-1942C31A w-100 my-0" />
+                <hr className="w-100 my-0" style={{ borderColor: "#e2e8f0" }} />
+                <span className="text-muted fs-11px text-uppercase fw-700 letter-spacing-1px">OR</span>
+                <hr className="w-100 my-0" style={{ borderColor: "#e2e8f0" }} />
               </div>
             </Col>
 
             {/* Google OAuth Button */}
             <Col xs={12}>
               <button type="button" className="btn-social">
-                <svg width="20" height="20" viewBox="0 0 24 24">
+                <svg width="18" height="18" viewBox="0 0 24 24">
                   <path
                     fill="#EA4335"
                     d="M12 5.04c1.74 0 3.3.6 4.53 1.78l3.4-3.4C17.95 1.18 15.2 0 12 0 7.39 0 3.39 2.6 1.47 6.38l3.95 3.06C6.36 6.58 8.97 5.04 12 5.04z"
@@ -214,8 +221,8 @@ export default function Login() {
 
             {/* Bottom Link */}
             <Col xs={12} className="pt-2 text-center">
-              <p className="ur-text-5E5E5E fs-14px mb-0">
-                Don't have an account? <Link to="/register" className="link-theme">Create account</Link>
+              <p className="text-muted fs-13px mb-0">
+                Don't have an account? <Link to="/register" className="link-theme fw-600">Create account free</Link>
               </p>
             </Col>
           </Row>

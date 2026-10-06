@@ -203,6 +203,18 @@ export default function AppDatePicker({
     setIsOpen(false);
   };
 
+  const [openUpward, setOpenUpward] = useState(false);
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUpward(spaceBelow < 310);
+    }
+    setIsOpen(!isOpen);
+  };
+
   const currentMonthName = MONTHS.find((m) => m.value === viewMonth)?.label || "";
 
   return (
@@ -210,7 +222,7 @@ export default function AppDatePicker({
       {/* Input Trigger */}
       <div
         className={`position-relative w-100 ${disabled ? "opacity-50" : ""}`}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         style={{ cursor: disabled ? "not-allowed" : "pointer" }}
       >
         <input
@@ -239,12 +251,14 @@ export default function AppDatePicker({
         <div
           className="ur-month-picker-popup position-absolute shadow-lg border"
           style={{
-            top: "calc(100% + 4px)",
+            top: openUpward ? "auto" : "calc(100% + 4px)",
+            bottom: openUpward ? "calc(100% + 4px)" : "auto",
             left: 0,
             zIndex: 999999,
             width: "290px",
             backgroundColor: "#ffffff",
             borderRadius: "12px",
+            boxShadow: "0 12px 28px -4px rgba(15, 23, 42, 0.18), 0 4px 10px -2px rgba(15, 23, 42, 0.08)",
           }}
         >
           {/* Header Navigation */}

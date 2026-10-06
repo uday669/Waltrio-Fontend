@@ -5,7 +5,6 @@ import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Card from "react-bootstrap/Card";
 import Button from "react-bootstrap/Button";
-import Table from "react-bootstrap/Table";
 import Badge from "react-bootstrap/Badge";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import Modal from "react-bootstrap/Modal";
@@ -19,20 +18,15 @@ import {
   FiTrendingDown,
   FiPlus,
   FiMinus,
-  FiCalendar,
   FiArrowRight,
   FiHome,
   FiCoffee,
   FiShoppingBag,
-  FiFileText,
   FiTarget,
-  FiBriefcase,
   FiZap,
 } from "react-icons/fi";
 import { IoWalletOutline } from "react-icons/io5";
 import { FaPiggyBank } from "react-icons/fa";
-import { BsBank2, BsStars } from "react-icons/bs";
-import { SiGooglepay, SiPhonepe } from "react-icons/si";
 import { useDashboardYearSummary, useDashboardAnalyticsYear } from "../../hooks/useDashboard";
 import { useBudgetCategories } from "../../hooks/useBudgets";
 import { useCreateIncome } from "../../hooks/useIncomes";
@@ -47,14 +41,10 @@ import AppDatePicker from "../../components/common/AppDatePicker";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-
-// Currency + percent formatting helpers.
 const fmtCurrency = (n) =>
   `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 const fmtPct = (v) => `${Number(v) >= 0 ? "+" : ""}${Number(v || 0)}%`;
 
-
-// Per-category visuals for the Budget Overview "Category Allocations" list.
 const BUDGET_CAT_META = {
   "Food & Dining": { icon: <FiCoffee size={14} />, color: "#8b5cf6", bg: "#f5f3ff", gradient: "linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%)" },
   "Housing & Rent": { icon: <FiHome size={14} />, color: "#4f46e5", bg: "#eef2ff", gradient: "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)" },
@@ -74,6 +64,14 @@ export default function Dashboard() {
   const { incomeCategories, expenseCategories } = useCategories();
   const firstName = (name || user?.name || "User").split(" ")[0];
 
+  // Dynamic greeting based on current hour
+  const timeGreeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  }, []);
+
   // Header Month and Year Filter State
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -85,7 +83,7 @@ export default function Dashboard() {
   const [chartTimeframe, setChartTimeframe] = useState("12m");
   const [chartYear, setChartYear] = useState(new Date().getFullYear());
 
-  // ---- Quick-add modals (Add Income / Add Expense) ----------------------
+  // Quick-add modals
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [incomeForm, setIncomeForm] = useState({ source: "", category: "", amount: "", date: today(), description: "" });
@@ -119,7 +117,6 @@ export default function Dashboard() {
     setExpenseForm({ merchant: "", category: expenseCategories[0]?.name || "", amount: "", date: today(), description: "" });
     setShowExpenseModal(true);
   };
-
 
   const handleSaveIncome = (e) => {
     e.preventDefault();
@@ -190,10 +187,7 @@ export default function Dashboard() {
     return {};
   }, [chartTimeframe, chartYear]);
 
-  // GET /dashboard/year-summary
   const { data: summaryData } = useDashboardYearSummary(summaryParams);
-
-  // GET /dashboard/analytics-year
   const { data: analyticsData } = useDashboardAnalyticsYear(analyticsParams);
 
   const totalBalance = summaryData?.totalBalance ?? 0;
@@ -202,7 +196,6 @@ export default function Dashboard() {
   const savings = summaryData?.totalSavings || {};
   const budget = summaryData?.budgetOverview || {};
 
-  // GET /budget/category — powers the Category Allocations list below.
   const { data: budgetCaps } = useBudgetCategories();
   const categoryAllocations = useMemo(() => {
     const caps = Array.isArray(budgetCaps) ? budgetCaps : [];
@@ -229,8 +222,6 @@ export default function Dashboard() {
     });
   }, [budgetCaps]);
 
-  // Budget summary strip (limit / spent / available / %) — computed from the
-  // overview budgetOverview or category allocations.
   const budgetSummary = useMemo(() => {
     const limit = Number(budget.monthlyLimit ?? categoryAllocations.reduce((a, c) => a + c.allocated, 0));
     const spent = Number(budget.spent ?? categoryAllocations.reduce((a, c) => a + c.spent, 0));
@@ -243,14 +234,11 @@ export default function Dashboard() {
       available,
       pct,
       onTrack,
-      dailyAverageSpend: budget.dailyAverageSpend,
-      dailyTarget: budget.dailyTarget,
-      dailyTargetDelta: budget.dailyTargetDelta,
     };
   }, [categoryAllocations, budget]);
   const goals = summaryData?.savingsGoals || [];
 
-  // 1. Top 4 Stat Cards — Total Balance, Income, Expenses, Savings
+  // Top 4 Stat Cards
   const stats = [
     {
       title: "Total Balance",
@@ -259,7 +247,7 @@ export default function Dashboard() {
       isPositive: Number(income.change ?? 0) >= 0,
       icon: <IoWalletOutline size={20} color="#4f46e5" />,
       iconBg: "#eef2ff",
-      sub: "Available across accounts",
+      sub: "Available net balance",
     },
     {
       title: "Total Income",
@@ -290,7 +278,7 @@ export default function Dashboard() {
     },
   ];
 
-  // 2. Bar Chart: Income vs Expenses — from analyticsYear.incomeVsExpenses.monthly
+  // Bar Chart Data
   const iveData = analyticsData?.incomeVsExpenses || {};
   const monthly = Array.isArray(iveData.monthly) ? iveData.monthly : [];
   const barCategories = monthly.map((m) => m.shortLabel || m.label);
@@ -302,7 +290,7 @@ export default function Dashboard() {
   const barChartOptions = {
     chart: {
       type: "bar",
-      height: 250,
+      height: 260,
       toolbar: { show: false },
       fontFamily: "inherit",
       parentHeightOffset: 0,
@@ -310,8 +298,8 @@ export default function Dashboard() {
     plotOptions: {
       bar: {
         horizontal: false,
-        columnWidth: "46%",
-        borderRadius: 4,
+        columnWidth: "42%",
+        borderRadius: 5,
         borderRadiusApplication: "end",
       },
     },
@@ -352,7 +340,7 @@ export default function Dashboard() {
     { name: "Expenses", data: barExpenses },
   ];
 
-  // 3. Savings Goals — from data.savingsGoals
+  // Savings Goals
   const GOAL_GRADIENTS = [
     "linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)",
     "linear-gradient(90deg, #10b981 0%, #34d399 100%)",
@@ -380,92 +368,16 @@ export default function Dashboard() {
   const totalSaved = savingsGoals.reduce((a, g) => a + g.saved, 0);
   const totalTarget = savingsGoals.reduce((a, g) => a + g.target, 0);
 
-  // 5. Clean Transactions Data
-  const transactions = [
-    {
-      id: "TX-9021",
-      name: "TechCorp India Pvt Ltd",
-      subtitle: "August Monthly Payroll",
-      date: "20 Aug 2026",
-      time: "10:00 AM",
-      account: "HDFC •••• 4091",
-      accountIcon: <BsBank2 className="text-primary me-1" size={12} />,
-      amount: "+₹50,000.00",
-      isIncome: true,
-      icon: <FiBriefcase size={15} />,
-      iconBg: "#ecfdf5",
-      iconColor: "#10b981",
-    },
-    {
-      id: "TX-9020",
-      name: "DLF Phase 2 Apartment Rent",
-      subtitle: "House Rent • Landlord Transfer",
-      date: "18 Aug 2026",
-      time: "02:30 PM",
-      account: "GPay • landlord@okhdfc",
-      accountIcon: <SiGooglepay className="text-secondary me-1" size={12} />,
-      amount: "-₹10,000.00",
-      isIncome: false,
-      icon: <FiHome size={15} />,
-      iconBg: "#f5f3ff",
-      iconColor: "#8b5cf6",
-    },
-    {
-      id: "TX-9019",
-      name: "Swiggy Instamart & Blinkit",
-      subtitle: "Groceries & Household Supplies",
-      date: "17 Aug 2026",
-      time: "08:15 PM",
-      account: "PhonePe UPI",
-      accountIcon: <SiPhonepe className="text-secondary me-1" size={12} />,
-      amount: "-₹2,500.00",
-      isIncome: false,
-      icon: <FiCoffee size={15} />,
-      iconBg: "#fef3c7",
-      iconColor: "#d97706",
-    },
-    {
-      id: "TX-9018",
-      name: "Amazon India Online Store",
-      subtitle: "Electronics & Books Purchase",
-      date: "16 Aug 2026",
-      time: "04:45 PM",
-      account: "Visa •••• 8820",
-      accountIcon: <IoWalletOutline className="text-secondary me-1" size={12} />,
-      amount: "-₹1,200.00",
-      isIncome: false,
-      icon: <FiShoppingBag size={15} />,
-      iconBg: "#fdf2f8",
-      iconColor: "#ec4899",
-    },
-    {
-      id: "TX-9017",
-      name: "Torrent Power Electricity",
-      subtitle: "Consumer #89210 • Auto-Debit",
-      date: "15 Aug 2026",
-      time: "11:20 AM",
-      account: "Auto-Debit • HDFC",
-      accountIcon: <FiZap className="text-secondary me-1" size={12} />,
-      amount: "-₹1,800.00",
-      isIncome: false,
-      icon: <FiFileText size={15} />,
-      iconBg: "#ecfeff",
-      iconColor: "#06b6d4",
-    },
-  ];
-
   return (
-    <Container fluid className="p-0 ms-dashboard">
-      {/* ===================================================================
-          1. GREETING HEADER & BUTTONS (Compact & Refined)
-          =================================================================== */}
+    <Container fluid className="p-0 ur-page-container">
+      {/* 1. GREETING HEADER & QUICK ACTION BUTTONS */}
       <div className="d-flex flex-md-row flex-column justify-content-between align-items-md-center align-items-start gap-2 mb-3">
         <div>
           <h1 className="ms-greeting-title mb-1">
-            Good Morning, {firstName} <span className="ms-greeting-emoji">👏</span>
+            {timeGreeting}, {firstName} 👋
           </h1>
           <p className="ms-greeting-subtitle mb-0">
-            Here's your comprehensive financial overview for {selectedMonthName} {selectedYear}.
+            Here is your financial pulse and budget breakdown for {selectedMonthName} {selectedYear}.
           </p>
         </div>
 
@@ -481,19 +393,17 @@ export default function Dashboard() {
             onChangeMode={setSelectedMode}
           />
           <Button className="ms-btn-income" onClick={openIncomeModal}>
-            <FiPlus size={13} />
+            <FiPlus size={14} />
             <span>Add Income</span>
           </Button>
           <Button className="ms-btn-expense" onClick={openExpenseModal}>
-            <FiMinus size={13} />
+            <FiMinus size={14} />
             <span>Add Expense</span>
           </Button>
         </div>
       </div>
 
-      {/* ===================================================================
-          2. TOP 4 STAT CARDS
-          =================================================================== */}
+      {/* 2. TOP 4 STAT CARDS */}
       <Row className="g-3 mb-3">
         {stats.map((stat, idx) => (
           <Col key={idx} xs={12} sm={6} xl={3}>
@@ -533,19 +443,16 @@ export default function Dashboard() {
         ))}
       </Row>
 
-      {/* ===================================================================
-          PAIR 1: INCOME VS EXPENSES
-          =================================================================== */}
+      {/* 3. INCOME VS EXPENSES CHART */}
       <Row className="g-3 mb-3">
-        {/* Income vs Expenses Bar Chart */}
         <Col xs={12}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div>
                 <div className="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                   <div>
-                    <h5 className="ms-card-title mb-0">Income vs Expenses</h5>
-                    <p className="text-muted fs-11px mb-0">Cash inflows vs outflows trend</p>
+                    <h5 className="ms-card-title mb-0">Income vs Expenses Analysis</h5>
+                    <p className="text-muted fs-11.5px mb-0">Inflows vs Outflows monthly breakdown</p>
                   </div>
 
                   {/* Filter: 6 Months, 12 Months, Year */}
@@ -554,7 +461,7 @@ export default function Dashboard() {
                       <button
                         type="button"
                         className={`btn btn-sm ${chartTimeframe === "6m" ? "btn-primary text-white fw-600" : "btn-light text-secondary border"}`}
-                        style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px 0 0 6px" }}
+                        style={{ fontSize: "11px", padding: "3px 10px", borderRadius: "6px 0 0 6px" }}
                         onClick={() => setChartTimeframe("6m")}
                       >
                         6 Months
@@ -562,7 +469,7 @@ export default function Dashboard() {
                       <button
                         type="button"
                         className={`btn btn-sm ${chartTimeframe === "12m" ? "btn-primary text-white fw-600" : "btn-light text-secondary border"}`}
-                        style={{ fontSize: "11px", padding: "2px 8px", borderRadius: chartTimeframe === "year" ? "0" : (chartTimeframe !== "6m" && chartTimeframe !== "12m" ? "0" : undefined) }}
+                        style={{ fontSize: "11px", padding: "3px 10px", borderRadius: chartTimeframe === "year" ? "0" : undefined }}
                         onClick={() => setChartTimeframe("12m")}
                       >
                         12 Months
@@ -570,7 +477,7 @@ export default function Dashboard() {
                       <button
                         type="button"
                         className={`btn btn-sm ${chartTimeframe === "year" ? "btn-primary text-white fw-600" : "btn-light text-secondary border"}`}
-                        style={{ fontSize: "11px", padding: "2px 8px", borderRadius: chartTimeframe === "year" ? "0" : "0 6px 6px 0" }}
+                        style={{ fontSize: "11px", padding: "3px 10px", borderRadius: "0 6px 6px 0" }}
                         onClick={() => setChartTimeframe("year")}
                       >
                         Year
@@ -581,8 +488,8 @@ export default function Dashboard() {
                         size="sm"
                         value={chartYear}
                         onChange={(e) => setChartYear(Number(e.target.value))}
-                        style={{ width: "80px", fontSize: "11px", padding: "2px 6px", height: "26px", borderRadius: "0 6px 6px 0" }}
-                        className="border"
+                        style={{ width: "80px", fontSize: "11.5px", padding: "3px 6px", height: "30px", borderRadius: "6px" }}
+                        className="border ms-1"
                       >
                         {[2024, 2025, 2026, 2027, 2028].map((y) => (
                           <option key={y} value={y}>
@@ -595,18 +502,18 @@ export default function Dashboard() {
                 </div>
 
                 {/* Legend */}
-                <div className="d-flex align-items-center gap-3 my-2 fs-11px">
+                <div className="d-flex align-items-center gap-3 my-2 fs-11.5px">
                   <span className="d-flex align-items-center gap-1">
                     <span
                       className="ms-legend-square"
-                      style={{ backgroundColor: "#4f46e5" }}
+                      style={{ backgroundColor: "#4f46e5", width: "10px", height: "10px", borderRadius: "3px" }}
                     ></span>
                     <span className="fw-600 text-dark">Income: ₹{Number(iveTotalIncome || 0).toLocaleString("en-IN")}</span>
                   </span>
                   <span className="d-flex align-items-center gap-1">
                     <span
                       className="ms-legend-square"
-                      style={{ backgroundColor: "#f43f5e" }}
+                      style={{ backgroundColor: "#f43f5e", width: "10px", height: "10px", borderRadius: "3px" }}
                     ></span>
                     <span className="fw-600 text-dark">Expenses: ₹{Number(iveTotalExpenses || 0).toLocaleString("en-IN")}</span>
                   </span>
@@ -618,7 +525,7 @@ export default function Dashboard() {
                   options={barChartOptions}
                   series={barChartSeries}
                   type="bar"
-                  height={270}
+                  height={260}
                 />
               </div>
             </Card.Body>
@@ -626,9 +533,7 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      {/* ===================================================================
-          PAIR 2: BUDGET OVERVIEW & SAVINGS GOALS
-          =================================================================== */}
+      {/* 4. BUDGET OVERVIEW & SAVINGS GOALS */}
       <Row className="g-3 mb-3">
         {/* Budget Overview */}
         <Col xs={12} lg={6}>
@@ -636,26 +541,26 @@ export default function Dashboard() {
             <Card.Body className="p-3">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <h5 className="ms-card-title mb-0">Budget Overview</h5>
-                  <p className="text-muted fs-11px mb-0">Monthly budget consumption</p>
+                  <h5 className="ms-card-title mb-0">Monthly Budget Overview</h5>
+                  <p className="text-muted fs-11.5px mb-0">Consumption limits &amp; pace</p>
                 </div>
                 <Badge
                   bg={budgetSummary.pct > 100 ? "danger-subtle" : "success-subtle"}
-                  className={`fw-700 fs-10px py-1 px-2 rounded-6px ${budgetSummary.pct > 100 ? "text-danger" : "text-success"}`}
+                  className={`fw-700 fs-10.5px py-1 px-2 rounded-6px ${budgetSummary.pct > 100 ? "text-danger" : "text-success"}`}
                 >
                   {budgetSummary.pct > 100 ? "Over Budget" : "On Track"}
                 </Badge>
               </div>
 
               {/* Monthly Budget Summary Card */}
-              <div className="ms-budget-metric-card p-2 px-3 rounded-10px mb-3">
-                <div className="d-flex justify-content-between align-items-center">
+              <div className="ms-budget-metric-card p-3 mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
                   <div>
                     <div className="ms-mini-label">Monthly Limit</div>
                     <div className="ms-budget-main-val">₹{budgetSummary.limit.toLocaleString("en-IN")}</div>
                   </div>
                   <div className="text-center">
-                    <div className="ms-mini-label">Spent so far</div>
+                    <div className="ms-mini-label">Spent</div>
                     <div className="ms-budget-used-val">₹{budgetSummary.spent.toLocaleString("en-IN")}</div>
                   </div>
                   <div className="text-end">
@@ -664,31 +569,39 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mt-2">
+                <div>
                   <div className="d-flex justify-content-between mb-1">
-                    <span className="text-muted fw-600 fs-11px">Total Spent</span>
+                    <span className="text-muted fw-600 fs-11px">Budget Consumption</span>
                     <span className="fw-800 text-primary fs-11px">{budgetSummary.pct}%</span>
                   </div>
                   <ProgressBar
                     now={Math.min(100, budgetSummary.pct)}
-                    className="ms-progress-blue"
-                    style={{ height: "8px" }}
+                    style={{ height: "7px", borderRadius: "10px" }}
                   />
                 </div>
               </div>
 
-              {/* Category Allocations — Premium Design */}
+              {/* Category Allocations */}
               <div>
-                <div className="ms-cat-budget-heading mb-2">Category Allocations</div>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="fw-700 text-dark fs-12.5px">Category Allocations</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/budgets")}
+                    className="btn btn-link p-0 text-decoration-none fs-11.5px fw-600 text-primary"
+                  >
+                    View All Caps &rarr;
+                  </button>
+                </div>
                 <div className="d-flex flex-column gap-2">
                   {categoryAllocations.length === 0 ? (
-                    <div className="text-muted fs-12px py-2 text-center">
-                      No category budgets set yet.
+                    <div className="text-muted fs-12px py-3 text-center border rounded-8px bg-light">
+                      No category budgets set yet. <button type="button" onClick={() => navigate("/budgets")} className="btn btn-link p-0 text-primary fs-12px fw-600">Set one now</button>
                     </div>
                   ) : (
-                    categoryAllocations.map((cat, idx) => (
+                    categoryAllocations.slice(0, 4).map((cat, idx) => (
                       <div className="ms-cat-alloc-card" key={idx}>
-                        <div className="d-flex align-items-center justify-content-between mb-2">
+                        <div className="d-flex align-items-center justify-content-between mb-1.5">
                           <div className="d-flex align-items-center gap-2">
                             <div className="ms-cat-icon-box" style={{ backgroundColor: cat.bg, color: cat.color }}>
                               {cat.icon}
@@ -697,7 +610,7 @@ export default function Dashboard() {
                               <div className="ms-cat-name">{cat.name}</div>
                               <div className="ms-cat-amount-info">
                                 ₹{cat.spent.toLocaleString("en-IN")}{" "}
-                                <span className="text-muted">of ₹{cat.allocated.toLocaleString("en-IN")}</span>
+                                <span className="text-muted fw-400">/ ₹{cat.allocated.toLocaleString("en-IN")}</span>
                               </div>
                             </div>
                           </div>
@@ -729,85 +642,78 @@ export default function Dashboard() {
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div>
                     <h5 className="ms-card-title mb-0 d-flex align-items-center gap-2">
-                      <FiTarget className="text-primary" /> Savings Goals
+                      <FiTarget className="text-primary" /> Savings Goals &amp; Targets
                     </h5>
-                    <p className="text-muted fs-11px mb-0">Active targets &amp; milestones</p>
+                    <p className="text-muted fs-11.5px mb-0">Progress toward milestone targets</p>
                   </div>
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    className="ms-btn-goal-add"
-                    onClick={() => navigate("/goals")}
-                  >
-                    + New Goal
-                  </Button>
                 </div>
 
                 {/* Goals Cards List */}
                 <div className="d-flex flex-column gap-2">
-                  {savingsGoals.length === 0 && (
-                    <div className="text-center text-muted fs-12px py-4">
-                      No savings goals yet. Create one to start tracking.
+                  {savingsGoals.length === 0 ? (
+                    <div className="text-center text-muted fs-12px py-4 border rounded-8px bg-light">
+                      No savings targets configured.
                     </div>
-                  )}
-                  {savingsGoals.map((goal, idx) => (
-                    <div key={idx} className="ms-goal-card p-2 px-3 rounded-10px">
-                      <div className="d-flex justify-content-between align-items-start mb-1">
-                        <div className="d-flex align-items-center gap-2">
+                  ) : (
+                    savingsGoals.map((goal, idx) => (
+                      <div key={idx} className="ms-goal-card p-3 rounded-10px">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <div className="d-flex align-items-center gap-2">
+                            <div
+                              className="ms-goal-icon-box"
+                              style={{ backgroundColor: goal.iconBg }}
+                            >
+                              <span>{goal.icon}</span>
+                            </div>
+                            <div>
+                              <div className="ms-goal-name">{goal.title}</div>
+                              <div className="ms-goal-cat">{goal.category} {goal.eta ? `• Target ${goal.eta}` : ""}</div>
+                            </div>
+                          </div>
+
+                          <div className="text-end">
+                            <span
+                              className="ms-goal-percent-badge"
+                              style={{
+                                backgroundColor: goal.badgeBg,
+                                color: goal.badgeColor,
+                              }}
+                            >
+                              {goal.percent}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Goal Numbers */}
+                        <div className="d-flex justify-content-between align-items-center fs-12px mb-1.5">
+                          <span className="fw-700 text-dark">
+                            ₹{goal.saved.toLocaleString("en-IN")}{" "}
+                            <span className="text-muted fw-500">
+                              / ₹{goal.target.toLocaleString("en-IN")}
+                            </span>
+                          </span>
+                          <span className="text-muted fs-11px">{goal.remainingText}</span>
+                        </div>
+
+                        {/* Gradient Custom Progress Bar */}
+                        <div className="ms-goal-track" style={{ height: "7px" }}>
                           <div
-                            className="ms-goal-icon-box"
-                            style={{ backgroundColor: goal.iconBg }}
-                          >
-                            <span>{goal.icon}</span>
-                          </div>
-                          <div>
-                            <div className="ms-goal-name">{goal.title}</div>
-                            <div className="ms-goal-cat">{goal.category} • {goal.eta}</div>
-                          </div>
-                        </div>
-
-                        <div className="text-end">
-                          <span
-                            className="ms-goal-percent-badge"
+                            className="ms-goal-fill"
                             style={{
-                              backgroundColor: goal.badgeBg,
-                              color: goal.badgeColor,
+                              width: `${Math.min(100, goal.percent)}%`,
+                              background: goal.gradient,
                             }}
-                          >
-                            {goal.percent}%
-                          </span>
+                          ></div>
                         </div>
                       </div>
-
-                      {/* Goal Numbers */}
-                      <div className="d-flex justify-content-between align-items-center fs-11.5px mb-1">
-                        <span className="fw-700 text-dark">
-                          ₹{goal.saved.toLocaleString("en-IN")}{" "}
-                          <span className="text-muted fw-500">
-                            / ₹{goal.target.toLocaleString("en-IN")}
-                          </span>
-                        </span>
-                        <span className="text-muted fs-10.5px">{goal.remainingText}</span>
-                      </div>
-
-                      {/* Gradient Custom Progress Bar */}
-                      <div className="ms-goal-track" style={{ height: "7px" }}>
-                        <div
-                          className="ms-goal-fill"
-                          style={{
-                            width: `${goal.percent}%`,
-                            background: goal.gradient,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 
-              <div className="pt-2 text-center border-top mt-2">
-                <span className="text-muted fs-11px">
-                  🚀 Total Saved: <strong className="text-dark">₹{totalSaved.toLocaleString("en-IN")}</strong> of ₹{totalTarget.toLocaleString("en-IN")}
+              <div className="pt-3 text-center border-top mt-3">
+                <span className="text-muted fs-12px">
+                  🎯 Total Saved: <strong className="text-dark">₹{totalSaved.toLocaleString("en-IN")}</strong> of ₹{totalTarget.toLocaleString("en-IN")}
                   {totalTarget ? ` (${Math.round((totalSaved / totalTarget) * 100)}% overall)` : ""}
                 </span>
               </div>
@@ -816,228 +722,7 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      {/* ===================================================================
-          PAIR 3: CLEAN 4-COLUMN RECENT TRANSACTIONS & UPCOMING PAYMENTS
-          (hidden — static mock content)
-          =================================================================== */}
-      {/* eslint-disable-next-line no-constant-binary-expression */}
-      {false && (
-      <Row className="g-3">
-        {/* Clean Recent Transactions Table */}
-        <Col xs={12} lg={7}>
-          <Card className="ms-premium-card h-100 border-0">
-            <Card.Body className="p-3 d-flex flex-column justify-content-between">
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h5 className="ms-card-title mb-0">Recent Transactions</h5>
-                    <p className="text-muted fs-11px mb-0">Latest verified account activity</p>
-                  </div>
-                  <a href="#all-transactions" className="ms-view-all-link fs-11.5px">
-                    View Statement <FiArrowRight size={12} className="ms-1" />
-                  </a>
-                </div>
-
-                {/* Clean 4-Column Table */}
-                <div className="table-responsive">
-                  <Table className="ms-clean-table mb-0 align-middle">
-                    <thead>
-                      <tr>
-                        <th>Merchant / Details</th>
-                        <th>Date &amp; Time</th>
-                        <th>Account / Method</th>
-                        <th className="text-end">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transactions.map((tx, idx) => (
-                        <tr key={idx} className="ms-tx-item-row">
-                          <td>
-                            <div className="d-flex align-items-center gap-2">
-                              <div
-                                className="ms-tx-avatar-box"
-                                style={{
-                                  backgroundColor: tx.iconBg,
-                                  color: tx.iconColor,
-                                }}
-                              >
-                                {tx.icon}
-                              </div>
-                              <div>
-                                <div className="ms-tx-main-title">{tx.name}</div>
-                                <div className="ms-tx-desc-text">{tx.subtitle}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="text-dark fw-600 fs-11.5px">{tx.date}</div>
-                            <div className="text-muted fs-10.5px">{tx.time}</div>
-                          </td>
-                          <td>
-                            <div className="d-inline-flex align-items-center text-dark fw-600 fs-11.5px">
-                              {tx.accountIcon}
-                              <span>{tx.account}</span>
-                            </div>
-                          </td>
-                          <td className="text-end">
-                            <span
-                              className={`ms-authentic-amount ${
-                                tx.isIncome ? "income" : "expense"
-                              }`}
-                            >
-                              {tx.amount}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </div>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        {/* Upcoming Payments & Financial Insights */}
-        <Col xs={12} lg={5}>
-          <div className="d-flex flex-column gap-3 h-100">
-            {/* Upcoming Payments */}
-            <Card className="ms-premium-card border-0">
-              <Card.Body className="p-3">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h5 className="ms-card-title mb-0">Upcoming Payments</h5>
-                    <p className="text-muted fs-11px mb-0">Due within the next 10 days</p>
-                  </div>
-                  <a href="#calendar" className="ms-view-all-link fs-11.5px">
-                    Calendar <FiArrowRight size={12} className="ms-1" />
-                  </a>
-                </div>
-
-                <div className="d-flex flex-column gap-2">
-                  <div className="ms-payment-item p-2 px-3 rounded-10px d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="ms-payment-date-badge">
-                        <span className="month">AUG</span>
-                        <span className="day">25</span>
-                      </div>
-                      <div>
-                        <div className="fw-700 text-dark fs-12px">Bike EMI Loan</div>
-                        <div className="text-muted fs-10.5px">HDFC Auto-Debit</div>
-                      </div>
-                    </div>
-                    <div className="text-end">
-                      <div className="fw-800 text-danger fs-13px">₹2,500</div>
-                      <span className="badge bg-danger-subtle text-danger fs-10px">Due in 2 days</span>
-                    </div>
-                  </div>
-
-                  <div className="ms-payment-item p-2 px-3 rounded-10px d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="ms-payment-date-badge">
-                        <span className="month">AUG</span>
-                        <span className="day">28</span>
-                      </div>
-                      <div>
-                        <div className="fw-700 text-dark fs-12px">Electricity Bill</div>
-                        <div className="text-muted fs-10.5px">Torrent Power</div>
-                      </div>
-                    </div>
-                    <div className="text-end">
-                      <div className="fw-800 text-dark fs-13px">₹1,800</div>
-                      <span className="badge bg-warning-subtle text-warning-emphasis fs-10px">Due in 5 days</span>
-                    </div>
-                  </div>
-
-                  <div className="ms-payment-item p-2 px-3 rounded-10px d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="ms-payment-date-badge">
-                        <span className="month">AUG</span>
-                        <span className="day">30</span>
-                      </div>
-                      <div>
-                        <div className="fw-700 text-dark fs-12px">House Rent</div>
-                        <div className="text-muted fs-10.5px">Landlord Transfer</div>
-                      </div>
-                    </div>
-                    <div className="text-end">
-                      <div className="fw-800 text-dark fs-13px">₹10,000</div>
-                      <span className="badge bg-secondary-subtle text-secondary fs-10px">Due in 7 days</span>
-                    </div>
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-
-            {/* Financial Insights */}
-            <Card className="ms-premium-card border-0 flex-grow-1">
-              <Card.Body className="p-3">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <div>
-                    <h5 className="ms-card-title mb-0">✨ Waltrio AI Insights</h5>
-                    <p className="text-muted fs-11px mb-0">Automated financial tips</p>
-                  </div>
-                  <Badge bg="primary-subtle" className="text-primary fw-700 fs-10px py-1 px-8px rounded-pill">
-                    Live Copilot
-                  </Badge>
-                </div>
-
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex flex-column gap-2 fs-11.5px flex-grow-1 pe-2">
-                    <div className="d-flex align-items-start gap-2 p-2 rounded-8px bg-warning-subtle text-warning-emphasis">
-                      <BsStars className="mt-1 flex-shrink-0" />
-                      <span>
-                        Food expenses are <strong>18% higher</strong> than last month.
-                      </span>
-                    </div>
-                    <div className="d-flex align-items-start gap-2 p-2 rounded-8px bg-success-subtle text-success-emphasis">
-                      <BsStars className="mt-1 flex-shrink-0" />
-                      <span>
-                        You are <strong>on track</strong> to achieve your MacBook savings goal.
-                      </span>
-                    </div>
-                    <div className="d-flex align-items-start gap-2 p-2 rounded-8px bg-primary-subtle text-primary-emphasis">
-                      <BsStars className="mt-1 flex-shrink-0" />
-                      <span>
-                        Monthly savings <strong>increased by 12%</strong> compared to July.
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Growth Illustration */}
-                  <div className="ms-growth-graphic flex-shrink-0 d-none d-sm-flex">
-                    <div className="ms-growth-bars">
-                      <span className="bar b1"></span>
-                      <span className="bar b2"></span>
-                      <span className="bar b3"></span>
-                      <span className="bar b4"></span>
-                    </div>
-                    <svg
-                      className="ms-growth-svg"
-                      viewBox="0 0 100 60"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M 5 45 Q 30 40, 50 25 T 95 10"
-                        stroke="#4f46e5"
-                        strokeWidth="3.5"
-                        fill="none"
-                      />
-                      <circle cx="95" cy="10" r="4.5" fill="#4f46e5" />
-                    </svg>
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-          </div>
-        </Col>
-      </Row>
-      )}
-
-      {/* ===================================================================
-          QUICK ADD: INCOME MODAL
-          =================================================================== */}
+      {/* QUICK ADD: INCOME MODAL */}
       <Modal show={showIncomeModal} onHide={() => setShowIncomeModal(false)} centered size="md" className="ur-modal">
         <Modal.Header closeButton className="border-0 pb-0">
           <div>
@@ -1045,7 +730,7 @@ export default function Dashboard() {
               <span className="ur-modal-icon income"><FiPlus size={16} /></span>
               Add Income
             </Modal.Title>
-            <p className="text-muted fs-11.5px mb-0">Quickly record an income entry.</p>
+            <p className="text-muted fs-11.5px mb-0">Record a new incoming payout or revenue stream.</p>
           </div>
         </Modal.Header>
         <Form onSubmit={handleSaveIncome}>
@@ -1055,7 +740,7 @@ export default function Dashboard() {
               <Form.Control
                 type="text"
                 required
-                placeholder="e.g. TechCorp India Pvt Ltd"
+                placeholder="e.g. Client Payout / Monthly Salary"
                 value={incomeForm.source}
                 onChange={(e) => setIncomeForm({ ...incomeForm, source: e.target.value })}
                 className="ur-form-input"
@@ -1098,10 +783,10 @@ export default function Dashboard() {
               />
             </Form.Group>
             <Form.Group className="mb-2">
-              <Form.Label className="ur-form-label">Description / Work Scope</Form.Label>
+              <Form.Label className="ur-form-label">Description / Note</Form.Label>
               <Form.Control
                 type="text"
-                placeholder="e.g. Monthly salary payout"
+                placeholder="e.g. Project milestone delivery"
                 value={incomeForm.description}
                 onChange={(e) => setIncomeForm({ ...incomeForm, description: e.target.value })}
                 className="ur-form-input"
@@ -1109,7 +794,7 @@ export default function Dashboard() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="border-0 pt-0">
-            <Button variant="light" size="sm" onClick={() => setShowIncomeModal(false)} className="rounded-6px px-3">
+            <Button variant="light" size="sm" onClick={() => setShowIncomeModal(false)} className="rounded-8px px-3">
               Cancel
             </Button>
             <Button type="submit" variant="primary" size="sm" className="ms-btn-income px-4" disabled={savingIncome}>
@@ -1119,9 +804,7 @@ export default function Dashboard() {
         </Form>
       </Modal>
 
-      {/* ===================================================================
-          QUICK ADD: EXPENSE MODAL
-          =================================================================== */}
+      {/* QUICK ADD: EXPENSE MODAL */}
       <Modal show={showExpenseModal} onHide={() => setShowExpenseModal(false)} centered size="md" className="ur-modal">
         <Modal.Header closeButton className="border-0 pb-0">
           <div>
@@ -1129,7 +812,7 @@ export default function Dashboard() {
               <span className="ur-modal-icon"><FiMinus size={16} /></span>
               Add Expense
             </Modal.Title>
-            <p className="text-muted fs-11.5px mb-0">Quickly record an outgoing payment.</p>
+            <p className="text-muted fs-11.5px mb-0">Record an outgoing purchase or bill payment.</p>
           </div>
         </Modal.Header>
         <Form onSubmit={handleSaveExpense}>
@@ -1139,7 +822,7 @@ export default function Dashboard() {
               <Form.Control
                 type="text"
                 required
-                placeholder="e.g. Swiggy Instamart / Amazon"
+                placeholder="e.g. Amazon / Cloud Server"
                 value={expenseForm.merchant}
                 onChange={(e) => setExpenseForm({ ...expenseForm, merchant: e.target.value })}
                 className="ur-form-input"
@@ -1186,7 +869,7 @@ export default function Dashboard() {
               <Form.Label className="ur-form-label">Description / Note</Form.Label>
               <Form.Control
                 type="text"
-                placeholder="e.g. Monthly grocery supplies"
+                placeholder="e.g. Monthly hosting subscription"
                 value={expenseForm.description}
                 onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
                 className="ur-form-input"
@@ -1194,7 +877,7 @@ export default function Dashboard() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="border-0 pt-0">
-            <Button variant="light" size="sm" onClick={() => setShowExpenseModal(false)} className="rounded-6px px-3">
+            <Button variant="light" size="sm" onClick={() => setShowExpenseModal(false)} className="rounded-8px px-3">
               Cancel
             </Button>
             <Button type="submit" variant="danger" size="sm" className="ms-btn-expense px-4" disabled={savingExpense}>

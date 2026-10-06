@@ -419,14 +419,30 @@ export default function Expenses() {
   const donutOptions = {
     chart: { type: "donut", height: 210, fontFamily: "inherit" },
     labels: donutLabels,
-    colors: donutColors,
+    colors: donutColors.length ? donutColors : ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
     dataLabels: {
-      enabled: true,
-      formatter: (val) => `${Math.round(val)}%`,
-      style: { fontSize: "11px", fontWeight: "700", colors: ["#ffffff"] },
-      dropShadow: { enabled: false },
+      enabled: false,
     },
-    plotOptions: { pie: { donut: { size: "65%" } } },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "72%",
+          labels: {
+            show: true,
+            name: { show: true, fontSize: "11px", fontWeight: 600, color: "#64748b", offsetY: -4 },
+            value: { show: true, fontSize: "16px", fontWeight: 800, color: "#0f172a", offsetY: 4, formatter: (val) => `${val}%` },
+            total: {
+              show: true,
+              label: "Total",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              color: "#64748b",
+              formatter: () => "100%",
+            },
+          },
+        },
+      },
+    },
     legend: { show: false },
     stroke: { width: 2, colors: ["#ffffff"] },
     tooltip: {
@@ -859,25 +875,29 @@ export default function Expenses() {
               </div>
 
               {donutSeries.length ? (
-                <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
-                  <div style={{ width: "180px", height: "200px" }}>
-                    <Chart options={donutOptions} series={donutSeries} type="donut" height={200} />
-                  </div>
+                <Row className="align-items-center g-3 my-auto py-1">
+                  <Col xs={12} sm={6} className="d-flex justify-content-center">
+                    <div style={{ width: "170px", height: "185px" }}>
+                      <Chart options={donutOptions} series={donutSeries} type="donut" height={185} />
+                    </div>
+                  </Col>
 
-                  <div className="ms-donut-legend ps-2" style={{ minWidth: "150px" }}>
-                    {donutItems.map((item, i) => (
-                      <div key={i} className="d-flex align-items-center justify-content-between mb-1 fs-11px">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
-                          <span className="text-dark fw-600">{item.name}</span>
+                  <Col xs={12} sm={6}>
+                    <div className="d-flex flex-column gap-1.5" style={{ maxHeight: "175px", overflowY: "auto" }}>
+                      {donutItems.map((item, i) => (
+                        <div key={i} className="ms-donut-legend-card fs-11px">
+                          <div className="d-flex align-items-center gap-2 text-truncate me-2">
+                            <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
+                            <span className="text-dark fw-600 text-truncate">{item.name}</span>
+                          </div>
+                          <span className="fw-700 text-dark flex-shrink-0">{item.value}%</span>
                         </div>
-                        <span className="fw-700 text-dark">{item.value}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ))}
+                    </div>
+                  </Col>
+                </Row>
               ) : (
-                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 200 }}>
+                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 185 }}>
                   No expense data to chart yet.
                 </div>
               )}

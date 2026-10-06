@@ -662,12 +662,10 @@ export default function Settings() {
               {/* 1. Category Type Selector */}
               <Col xs={12}>
                 <Form.Label className="ur-form-label">Category Type *</Form.Label>
-                <div className="d-flex gap-2">
-                  <Button
+                <div className="ur-type-segmented-wrap">
+                  <button
                     type="button"
-                    variant={categoryFormData.type === "expense" ? "danger" : "outline-secondary"}
-                    size="sm"
-                    className="flex-fill py-2 rounded-8px fw-600 d-flex align-items-center justify-content-center gap-2"
+                    className={`ur-type-segment-btn ${categoryFormData.type === "expense" ? "active expense" : ""}`}
                     onClick={() => {
                       const p = PRESET_COLORS[1];
                       setCategoryFormData({
@@ -680,12 +678,10 @@ export default function Settings() {
                     }}
                   >
                     <FiTrendingDown size={15} /> Expense Category
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant={categoryFormData.type === "income" ? "success" : "outline-secondary"}
-                    size="sm"
-                    className="flex-fill py-2 rounded-8px fw-600 d-flex align-items-center justify-content-center gap-2"
+                    className={`ur-type-segment-btn ${categoryFormData.type === "income" ? "active income" : ""}`}
                     onClick={() => {
                       const p = PRESET_COLORS[0];
                       setCategoryFormData({
@@ -698,7 +694,7 @@ export default function Settings() {
                     }}
                   >
                     <FiTrendingUp size={15} /> Income Category
-                  </Button>
+                  </button>
                 </div>
               </Col>
 

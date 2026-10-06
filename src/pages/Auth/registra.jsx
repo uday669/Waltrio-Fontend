@@ -80,9 +80,13 @@ export default function Register() {
     <Auth>
       <div className="after-lg-card">
         <div className="mb-3 text-center text-sm-start">
-          <h2 className="auth-title">Create Your Account 🚀</h2>
+          <div className="auth-badge-pill">
+            <span className="status-dot"></span>
+            <span>Get Started Free</span>
+          </div>
+          <h2 className="auth-title">Create your account 🚀</h2>
           <p className="auth-subtitle">
-            Join Waltrio to take full control of your finances
+            Join 50,000+ users taking full control of their finances
           </p>
         </div>
 
@@ -110,7 +114,7 @@ export default function Register() {
                   value={formData.fullName}
                   onChange={handleChange}
                   className="form-control"
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. Rahul Sharma"
                   autoComplete="name"
                   required
                 />
@@ -194,13 +198,31 @@ export default function Register() {
                 <button
                   type="button"
                   className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                 >
                   {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
                 </button>
               </div>
             </Col>
+
+            {/* Password Criteria Feedback (if user started typing) */}
+            {formData.password && (
+              <Col xs={12}>
+                <div className="ur-password-checklist">
+                  <div className={`ur-checklist-item ${formData.password.length >= 6 ? "valid" : ""}`}>
+                    <span>{formData.password.length >= 6 ? "✓" : "○"}</span>
+                    <span>At least 6 characters</span>
+                  </div>
+                  {formData.confirmPassword && (
+                    <div className={`ur-checklist-item ${formData.password === formData.confirmPassword ? "valid" : ""}`}>
+                      <span>{formData.password === formData.confirmPassword ? "✓" : "○"}</span>
+                      <span>Passwords match</span>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            )}
 
             {/* Terms & Conditions Checkbox */}
             <Col xs={12}>
@@ -214,8 +236,8 @@ export default function Register() {
                   onChange={handleChange}
                   required
                 />
-                <label className="form-check-label fs-13px ur-text-5E5E5E cursor-pointer" htmlFor="agreeTerms">
-                  I agree to Waltrio's <a href="#" className="link-theme">Terms of Service</a> &amp; <a href="#" className="link-theme">Privacy Policy</a>
+                <label className="form-check-label fs-13px text-muted cursor-pointer" htmlFor="agreeTerms">
+                  I agree to Waltrio's <a href="#" className="link-theme fw-600">Terms of Service</a> &amp; <a href="#" className="link-theme fw-600">Privacy Policy</a>
                 </label>
               </div>
             </Col>
@@ -228,11 +250,14 @@ export default function Register() {
                 disabled={loading}
               >
                 {loading ? (
-                  <span>Creating Account...</span>
+                  <span className="d-flex align-items-center gap-2">
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Creating Account...</span>
+                  </span>
                 ) : (
                   <>
-                    <span>Create Account</span>
-                    <FiArrowRight size={18} />
+                    <span>Create Free Account</span>
+                    <FiArrowRight size={17} />
                   </>
                 )}
               </button>
@@ -241,16 +266,16 @@ export default function Register() {
             {/* Divider */}
             <Col xs={12}>
               <div className="d-flex align-items-center gap-2 my-1">
-                <hr className="ur-border-1942C31A w-100 my-0" />
-                <span className="ur-text-5E5E5E fs-12px text-uppercase fw-600">OR</span>
-                <hr className="ur-border-1942C31A w-100 my-0" />
+                <hr className="w-100 my-0" style={{ borderColor: "#e2e8f0" }} />
+                <span className="text-muted fs-11px text-uppercase fw-700 letter-spacing-1px">OR</span>
+                <hr className="w-100 my-0" style={{ borderColor: "#e2e8f0" }} />
               </div>
             </Col>
 
             {/* Google OAuth Button */}
             <Col xs={12}>
               <button type="button" className="btn-social">
-                <svg width="20" height="20" viewBox="0 0 24 24">
+                <svg width="18" height="18" viewBox="0 0 24 24">
                   <path
                     fill="#EA4335"
                     d="M12 5.04c1.74 0 3.3.6 4.53 1.78l3.4-3.4C17.95 1.18 15.2 0 12 0 7.39 0 3.39 2.6 1.47 6.38l3.95 3.06C6.36 6.58 8.97 5.04 12 5.04z"
@@ -274,8 +299,8 @@ export default function Register() {
 
             {/* Bottom Link */}
             <Col xs={12} className="pt-2 text-center">
-              <p className="ur-text-5E5E5E fs-14px mb-0">
-                Already have an account? <Link to="/login" className="link-theme">Sign in</Link>
+              <p className="text-muted fs-13px mb-0">
+                Already have an account? <Link to="/login" className="link-theme fw-600">Sign in</Link>
               </p>
             </Col>
           </Row>
