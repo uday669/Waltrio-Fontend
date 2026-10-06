@@ -7,6 +7,9 @@ import {
   loginUser,
   resendOtp,
   verifyOtp,
+  forgotPassword,
+  verifyForgotPasswordOtp,
+  resetForgotPassword,
   getMe,
   getProfile,
   updateProfile,
@@ -226,6 +229,27 @@ export const useVerifyOtp = ({ onSuccess, ...options } = {}) => {
     ...options,
   });
 };
+
+export const useForgotPassword = (options = {}) =>
+  useMutation({
+    mutationKey: ["auth", "forgot-password"],
+    mutationFn: forgotPassword,
+    ...options,
+  });
+
+export const useVerifyForgotPasswordOtp = (options = {}) =>
+  useMutation({
+    mutationKey: ["auth", "forgot-password", "verify-otp"],
+    mutationFn: verifyForgotPasswordOtp,
+    ...options,
+  });
+
+export const useResetForgotPassword = (options = {}) =>
+  useMutation({
+    mutationKey: ["auth", "forgot-password", "reset"],
+    mutationFn: resetForgotPassword,
+    ...options,
+  });
 
 /**
  * Fetch current authenticated user via GET /v1/api/auth/me.

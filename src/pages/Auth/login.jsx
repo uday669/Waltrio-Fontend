@@ -158,7 +158,11 @@ export default function Login() {
                     Remember me
                   </label>
                 </div>
-                <Link to="/otp" className="link-theme fs-13px fw-600">
+                <Link
+                  to="/forgot-password"
+                  state={{ email: formData.email }}
+                  className="link-theme fs-13px fw-600"
+                >
                   Forgot password?
                 </Link>
               </div>

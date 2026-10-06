@@ -350,31 +350,42 @@ a {
 
 .btn-theme {
   --bs-btn-color: var(--ur-text-FFFFFF);
-  --bs-btn-bg: #6366f1;
-  --bs-btn-border-color: #6366f1;
+  --bs-btn-bg: #4f46e5;
+  --bs-btn-border-color: #4f46e5;
   --bs-btn-hover-color: var(--ur-text-FFFFFF);
-  --bs-btn-hover-bg: #4f46e5;
-  --bs-btn-hover-border-color: #4f46e5;
-  background-color: #6366f1 !important;
+  --bs-btn-hover-bg: #4338ca;
+  --bs-btn-hover-border-color: #4338ca;
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
   color: var(--ur-text-FFFFFF) !important;
-  border-color: #6366f1 !important;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.28) !important;
+  border: 1px solid #4f46e5 !important;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 48px;
+  border-radius: 10px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
 }
 .btn-theme:hover {
-  background-color: #4f46e5 !important;
-  border-color: #4f46e5 !important;
+  background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%) !important;
+  border-color: #4338ca !important;
   color: var(--ur-text-FFFFFF) !important;
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.38) !important;
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38) !important;
   transform: translateY(-1px);
 }
 .btn-theme:active {
   transform: translateY(0);
 }
 .btn-theme:disabled {
-  background-color: #a5b4fc !important;
+  background: #a5b4fc !important;
   border-color: #a5b4fc !important;
   cursor: not-allowed;
   box-shadow: none !important;
+  transform: none;
 }
 
 .btn-03FFB9 {
@@ -814,6 +825,13 @@ a {
   margin-bottom: 8px;
 }
 
+.auth-badge-success {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  margin-bottom: 14px;
+}
+
 .auth-title {
   font-size: clamp(22px, 2.5vw, 28px);
   font-weight: 800;
@@ -827,6 +845,53 @@ a {
   color: #64748b;
   margin-bottom: 0;
   line-height: 1.5;
+}
+
+/* Auth Success State Screen */
+.auth-success-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 0;
+  width: 100%;
+  animation: authFadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes authFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-success-icon-halo {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1.5px solid rgba(16, 185, 129, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+}
+
+.auth-success-icon-core {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
 }
 
 /* 4-Digit OTP Container */

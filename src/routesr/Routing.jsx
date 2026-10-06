@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../pages/Auth/login';
 import Register from '../pages/Auth/registra';
 import AuthOtp from '../pages/Auth/authOtp';
+import ForgotPassword from '../pages/Auth/forgotPassword';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/dashboard/dashboard';
 import Income from '../pages/income/Income';
@@ -46,6 +47,14 @@ export default function Routing() {
         element={
           <PublicRoute>
             <Register />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
           </PublicRoute>
         }
       />

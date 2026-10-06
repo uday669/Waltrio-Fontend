@@ -31,6 +31,30 @@ export const verifyOtp = ({ email, otp }) =>
   api.post(ENDPOINTS.auth.verifyOtp, { email, otp });
 
 /**
+ * Request password reset OTP (Step 1).
+ * POST /v1/api/auth/forgot-password
+ * @param {{ email: string }} payload
+ */
+export const forgotPassword = ({ email }) =>
+  api.post(ENDPOINTS.auth.forgotPassword, { email });
+
+/**
+ * Verify OTP for forgot password and receive resetToken (Step 2).
+ * POST /v1/api/auth/forgot-password/verify-otp
+ * @param {{ email: string, otp: string }} payload
+ */
+export const verifyForgotPasswordOtp = ({ email, otp }) =>
+  api.post(ENDPOINTS.auth.forgotPasswordVerifyOtp, { email, otp });
+
+/**
+ * Reset password using email, resetToken, and newPassword (Step 3).
+ * PATCH /v1/api/auth/forgot-password/reset
+ * @param {{ email: string, resetToken: string, newPassword: string }} payload
+ */
+export const resetForgotPassword = ({ email, resetToken, newPassword }) =>
+  api.patch(ENDPOINTS.auth.forgotPasswordReset, { email, resetToken, newPassword });
+
+/**
  * Get the currently authenticated user profile.
  * GET /v1/api/auth/me
  */
