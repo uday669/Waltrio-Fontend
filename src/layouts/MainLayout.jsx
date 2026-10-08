@@ -14,10 +14,10 @@ export default function MainLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Close sidebar on window resize to desktop
+  // Close sidebar on window resize to tablet/desktop
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 992) {
+      if (window.innerWidth >= 768) {
         setSidebarOpen(false);
       }
     };

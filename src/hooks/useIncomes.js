@@ -2,10 +2,12 @@
 // Queries: list, summary, analytics, single.
 // Mutations: create, update, delete — all invalidate the income cache.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getToken } from "../api/client";
 import {
   getIncomes,
   getIncomeSummary,
-  getIncomeAnalytics,
+  getIncomeVelocity,
+  getIncomeRevenueShare,
   createIncome,
   getIncome,
   updateIncome,
@@ -20,6 +22,7 @@ export function unwrap(res) {
   if (res == null) return res;
   if (Array.isArray(res)) return res;
   if (res.data !== undefined) return res.data;
+  if (res.Data !== undefined) return res.Data;
   if (res.result !== undefined) return res.result;
   if (res.incomes !== undefined) return res.incomes;
   return res;
@@ -138,6 +141,8 @@ export function normalizeIncome(row) {
 }
 
 export function useIncomes(params = {}, options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: [...INCOMES_KEY, "list", params],
     queryFn: () => getIncomes(params),
@@ -153,35 +158,70 @@ export function useIncomes(params = {}, options = {}) {
       }
       return items;
     },
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
 
-export function useIncomeSummary(options = {}) {
+export function useIncomeSummary(params = {}, options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
-    queryKey: [...INCOMES_KEY, "summary"],
-    queryFn: getIncomeSummary,
+    queryKey: [...INCOMES_KEY, "summary", params],
+    queryFn: () => getIncomeSummary(params),
     select: unwrap,
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
 
-export function useIncomeAnalytics(params = {}, options = {}) {
+export function useIncomeVelocity(params = {}, options = {}) {
+  const token = getToken();
+  const isOptionsOnly =
+    params &&
+    typeof params === "object" &&
+    (params.enabled !== undefined || params.retry !== undefined || params.select !== undefined);
+  const actualParams = isOptionsOnly ? {} : params;
+  const actualOptions = isOptionsOnly ? params : options;
+  const { enabled = true, ...restOptions } = actualOptions;
   return useQuery({
-    queryKey: [...INCOMES_KEY, "analytics", params],
-    queryFn: () => getIncomeAnalytics(params),
+    queryKey: [...INCOMES_KEY, "velocity", actualParams],
+    queryFn: () => getIncomeVelocity(actualParams),
     select: unwrap,
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
+
+export function useIncomeRevenueShare(params = {}, options = {}) {
+  const token = getToken();
+  const isOptionsOnly =
+    params &&
+    typeof params === "object" &&
+    (params.enabled !== undefined || params.retry !== undefined || params.select !== undefined);
+  const actualParams = isOptionsOnly ? {} : params;
+  const actualOptions = isOptionsOnly ? params : options;
+  const { enabled = true, ...restOptions } = actualOptions;
+  return useQuery({
+    queryKey: [...INCOMES_KEY, "revenue-share", actualParams],
+    queryFn: () => getIncomeRevenueShare(actualParams),
+    select: unwrap,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
+  });
+}
+
+export const useIncomeAnalytics = useIncomeVelocity;
 
 export function useIncome(id, options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: [...INCOMES_KEY, "detail", id],
     queryFn: () => getIncome(id),
     select: (res) => normalizeIncome(unwrap(res)),
-    enabled: !!id,
-    ...options,
+    enabled: Boolean(token) && Boolean(id) && Boolean(enabled),
+    ...restOptions,
   });
 }
 

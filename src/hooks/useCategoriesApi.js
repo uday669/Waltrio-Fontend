@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getToken } from "../api/client";
 import {
   getIncomeCategories,
   getExpenseCategories,
@@ -192,21 +193,27 @@ export function parseCategoryList(res, categoryType = "expense") {
 
 // GET income categories (/v1/api/categories/income)
 export function useIncomeCategoriesQuery(options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: [...CATEGORIES_KEY, "income"],
     queryFn: getIncomeCategories,
     select: (res) => parseCategoryList(res, "income"),
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
 
 // GET expense categories (/v1/api/categories/expense)
 export function useExpenseCategoriesQuery(options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: [...CATEGORIES_KEY, "expense"],
     queryFn: getExpenseCategories,
     select: (res) => parseCategoryList(res, "expense"),
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
 

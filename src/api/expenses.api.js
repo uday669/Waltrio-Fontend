@@ -15,12 +15,16 @@ export const getExpenses = (params) =>
   api.get(`${ENDPOINTS.expenses.list}${toQuery(params)}`, { auth: true });
 
 // GET /expenses/summary — the 4 metric cards.
-export const getExpenseSummary = () =>
-  api.get(ENDPOINTS.expenses.summary, { auth: true });
+export const getExpenseSummary = (params) =>
+  api.get(`${ENDPOINTS.expenses.summary}${toQuery(params)}`, { auth: true });
 
-// GET /expenses/analytics — data for the two charts.
-export const getExpenseAnalytics = (params) =>
-  api.get(`${ENDPOINTS.expenses.analytics}${toQuery(params)}`, { auth: true });
+// GET /expenses/spending-distribution — category spending breakdown (supports day, month, year filters).
+export const getExpenseSpendingDistribution = (params = {}) =>
+  api.get(`${ENDPOINTS.expenses.spendingDistribution}${toQuery(params)}`, { auth: true });
+
+// GET /expenses/weekly-outflow — weekly outflow trends vs target (filtered only by month & year).
+export const getExpenseWeeklyOutflow = (params = {}) =>
+  api.get(`${ENDPOINTS.expenses.weeklyOutflow}${toQuery(params)}`, { auth: true });
 
 // POST /expenses — create a new expense.
 export const createExpense = (payload) =>

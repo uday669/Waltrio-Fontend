@@ -7,9 +7,12 @@ import {
   loginUser,
   resendOtp,
   verifyOtp,
-  getMe,
+  forgotPassword,
+  verifyForgotPasswordOtp,
+  resetForgotPassword,
   getProfile,
   updateProfile,
+  deleteProfile,
 } from "../api/auth.api";
 import { getToken, setToken } from "../api/client";
 
@@ -192,7 +195,7 @@ export const useLogin = ({ onSuccess, ...options } = {}) => {
       const token = extractToken(data);
       if (token) {
         setToken(token);
-        queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+        queryClient.invalidateQueries();
       } else {
         // Helps diagnose "token not sent" — check what login actually returned.
         console.warn("[auth] No JWT found in login response:", data);
@@ -219,7 +222,7 @@ export const useVerifyOtp = ({ onSuccess, ...options } = {}) => {
       const token = extractToken(data);
       if (token) {
         setToken(token);
-        queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+        queryClient.invalidateQueries();
       }
       onSuccess?.(data, ...rest);
     },
@@ -227,35 +230,47 @@ export const useVerifyOtp = ({ onSuccess, ...options } = {}) => {
   });
 };
 
-/**
- * Fetch current authenticated user via GET /v1/api/auth/me.
- */
-export const useMe = (options = {}) => {
-  const token = getToken();
-  return useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: getMe,
-    enabled: Boolean(token),
-    staleTime: 5 * 60 * 1000,
-    select: (data) => extractUserData(data),
+export const useForgotPassword = (options = {}) =>
+  useMutation({
+    mutationKey: ["auth", "forgot-password"],
+    mutationFn: forgotPassword,
     ...options,
   });
-};
+
+export const useVerifyForgotPasswordOtp = (options = {}) =>
+  useMutation({
+    mutationKey: ["auth", "forgot-password", "verify-otp"],
+    mutationFn: verifyForgotPasswordOtp,
+    ...options,
+  });
+
+export const useResetForgotPassword = (options = {}) =>
+  useMutation({
+    mutationKey: ["auth", "forgot-password", "reset"],
+    mutationFn: resetForgotPassword,
+    ...options,
+  });
 
 /**
  * Fetch user profile via GET /v1/api/auth/profile.
  */
 export const useProfile = (options = {}) => {
   const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: ["auth", "profile"],
     queryFn: getProfile,
-    enabled: Boolean(token),
+    enabled: Boolean(token) && Boolean(enabled),
     staleTime: 5 * 60 * 1000,
     select: (data) => extractUserData(data),
-    ...options,
+    ...restOptions,
   });
 };
+
+/**
+ * useMe alias pointing to useProfile (/v1/api/auth/profile).
+ */
+export const useMe = useProfile;
 
 /**
  * Update user profile via PUT /v1/api/auth/profile.
@@ -267,8 +282,23 @@ export const useUpdateProfile = ({ onSuccess, ...options } = {}) => {
     mutationFn: updateProfile,
     onSuccess: (data, ...rest) => {
       queryClient.invalidateQueries({ queryKey: ["auth", "profile"] });
-      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       if (data) extractUserData(data);
+      onSuccess?.(data, ...rest);
+    },
+    ...options,
+  });
+};
+
+/**
+ * Permanently delete user profile and account via DELETE /v1/api/auth/profile.
+ */
+export const useDeleteProfile = ({ onSuccess, ...options } = {}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["auth", "deleteProfile"],
+    mutationFn: deleteProfile,
+    onSuccess: (data, ...rest) => {
+      queryClient.clear();
       onSuccess?.(data, ...rest);
     },
     ...options,

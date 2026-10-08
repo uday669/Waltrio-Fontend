@@ -1,25 +1,33 @@
-// TanStack Query hook for the dashboard overview.
+// TanStack Query hooks for dashboard year-summary and analytics-year.
 import { useQuery } from "@tanstack/react-query";
-import { getDashboardOverview, getTotalBalance } from "../api/dashboard.api";
+import { getToken } from "../api/client";
+import { getDashboardYearSummary, getDashboardAnalyticsYear } from "../api/dashboard.api";
 
 // Unwrap { success, data } -> data.
 const unwrap = (res) => res?.data ?? res ?? null;
 
-export function useDashboardOverview(options = {}) {
+// GET /dashboard/year-summary
+export function useDashboardYearSummary(params = {}, options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
-    queryKey: ["dashboard", "overview"],
-    queryFn: getDashboardOverview,
+    queryKey: ["dashboard", "year-summary", params],
+    queryFn: () => getDashboardYearSummary(params),
     select: unwrap,
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
 
-// GET /dashboard/total-balance — powers the Total Balance stat card.
-export function useTotalBalance(options = {}) {
+// GET /dashboard/analytics-year
+export function useDashboardAnalyticsYear(params = {}, options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
-    queryKey: ["dashboard", "total-balance"],
-    queryFn: getTotalBalance,
+    queryKey: ["dashboard", "analytics-year", params],
+    queryFn: () => getDashboardAnalyticsYear(params),
     select: unwrap,
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }

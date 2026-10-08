@@ -40,7 +40,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useIncomes,
   useIncomeSummary,
-  useIncomeAnalytics,
+  useIncomeVelocity,
+  useIncomeRevenueShare,
   useCreateIncome,
   useUpdateIncome,
   useDeleteIncome,
@@ -48,52 +49,123 @@ import {
 import { deleteIncome } from "../../api/incomes.api";
 import { toast } from "../../lib/toast";
 import { useCategories } from "../../context/CategoryContext";
+import { useAuth } from "../../context/AuthContext";
+import MonthYearFilter, { MONTHS } from "../../components/common/MonthYearFilter";
+import AppDatePicker from "../../components/common/AppDatePicker";
 
 export default function Income() {
   const queryClient = useQueryClient();
+  const { currencySymbol } = useAuth();
   const { incomeCategories, getCategoryMeta } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
-  const [timeRange, setTimeRange] = useState("monthly");
-  // Server-side period filter for GET /incomes:
-  //   "current" -> no params (backend defaults to current month)
-  //   "all"     -> ?all=true
-  //   "YYYY-M"  -> ?month=M&year=YYYY
-  const [selectedPeriod, setSelectedPeriod] = useState("current");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedMode, setSelectedMode] = useState("month");
 
-  // Period dropdown options: This Month, All Time, then the last 11 months.
-  const periodOptions = useMemo(() => {
-    const opts = [
-      { value: "current", label: "This Month" },
-      { value: "all", label: "All Time" },
-    ];
-    const now = new Date();
-    for (let k = 1; k <= 11; k++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
-      opts.push({
-        value: `${d.getFullYear()}-${d.getMonth() + 1}`,
-        label: d.toLocaleString("en-US", { month: "long", year: "numeric" }),
-      });
+  const selectedMonthName = useMemo(() => {
+    return MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Month";
+  }, [selectedMonth]);
+
+  // Translate active filter mode into GET /incomes list query params:
+  // ?month=10&year=2026 or ?filter=day&day=3&month=10&year=2026 or ?filter=year&year=2026
+  const queryParams = useMemo(() => {
+    const base = {
+      category: selectedCategory,
+      status: selectedStatus,
+      page,
+      limit,
+    };
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          ...base,
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
     }
-    return opts;
-  }, []);
+    if (selectedMode === "year") {
+      return {
+        ...base,
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      ...base,
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear, selectedCategory, selectedStatus, page, limit]);
 
-  // Translate the selected period into GET /incomes query params.
-  const periodParams = useMemo(() => {
-    if (selectedPeriod === "all") return { all: true };
-    if (selectedPeriod === "current") return {};
-    const [year, month] = selectedPeriod.split("-").map(Number);
-    return { month, year };
-  }, [selectedPeriod]);
+  // Summary Query Params: ?month=10&year=2026 or ?filter=day&day=3&month=10&year=2026 or ?filter=year&year=2026
+  const summaryParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    if (selectedMode === "year") {
+      return {
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
+
+  // Revenue Share Query Params: only month & year (no day filter)
+  const revenueShareParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    if (selectedMode === "year") {
+      return {
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
+
+  // Velocity Query Params: year
+  const velocityParams = useMemo(() => {
+    return {
+      year: Number(selectedYear),
+    };
+  }, [selectedYear]);
 
   // ---- Server data (TanStack Query) -------------------------------------
-  // GET /incomes — full list (period + filters passed as params).
   const {
     data: incomesData,
     isLoading: incomesLoading,
     isError: incomesIsError,
     error: incomesErr,
-  } = useIncomes({ ...periodParams, category: selectedCategory, status: selectedStatus });
+  } = useIncomes(queryParams);
 
   // Surface a real API/auth failure instead of a silent empty table.
   React.useEffect(() => {
@@ -105,12 +177,16 @@ export default function Income() {
 
   // Only ever show real API data (empty array while loading / when none).
   const incomes = useMemo(() => incomesData || [], [incomesData]);
+  const totalCount = incomesData?.total ?? incomesData?.pagination?.total ?? incomes.length;
 
-  // GET /incomes/summary — the 4 metric cards.
-  const { data: summaryData } = useIncomeSummary();
+  // GET /incomes/summary — the 3 metric cards.
+  const { data: summaryData } = useIncomeSummary(summaryParams);
 
-  // GET /incomes/analytics — data for the two charts.
-  const { data: analyticsData } = useIncomeAnalytics({ range: timeRange });
+  // GET /incomes/velocity — data for Income Inflow Velocity chart.
+  const { data: velocityData } = useIncomeVelocity(velocityParams);
+
+  // GET /incomes/revenue-share — data for Revenue Share by Category donut chart (filtered by month & year).
+  const { data: revenueShareData } = useIncomeRevenueShare(revenueShareParams);
 
   // ---- Mutations --------------------------------------------------------
   const { mutate: createIncomeMut, isPending: creating } = useCreateIncome({
@@ -186,19 +262,18 @@ export default function Income() {
     const total = incomes.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     const avg = incomes.length > 0 ? Math.round(total / incomes.length) : 0;
 
-    // Sum of income dated in the current calendar month.
-    const now = new Date();
-    const thisMonth = incomes
-      .filter((i) => {
-        const d = new Date(i.date);
-        return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      })
-      .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    // Recurring incomes: items marked as isRecurring or recurring or status recurring
+    const recurringList = incomes.filter(
+      (i) => i.isRecurring === true || i.recurring === true || (i.status && i.status.toLowerCase() === "recurring")
+    );
+    const recurring = recurringList.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    const recurringPercentage = total > 0 ? Number(((recurring / total) * 100).toFixed(1)) : 0;
 
     // Find top category by total amount.
     const catMap = {};
     incomes.forEach((i) => {
-      catMap[i.category] = (catMap[i.category] || 0) + Number(i.amount);
+      const c = i.category || "Other";
+      catMap[c] = (catMap[c] || 0) + (Number(i.amount) || 0);
     });
     let topCat = "—";
     let maxVal = 0;
@@ -209,113 +284,171 @@ export default function Income() {
       }
     });
 
-    return { total, thisMonth, avg, topCat, maxVal };
+    return { total, recurring, recurringPercentage, recurringCount: recurringList.length, avg, topCat, maxVal };
   }, [incomes]);
-
-  // Prefer server summary (GET /incomes/summary); fall back to computed metrics.
-  const s = summaryData || {};
-  const thisMonth = Number(s.thisMonth ?? s.monthlyInflow ?? s.currentMonth ?? metrics.thisMonth);
-  const total = Number(s.totalInflow ?? s.total ?? s.totalIncome ?? metrics.total);
-  const recurringInflow = Number(s.recurringInflow ?? s.recurring ?? thisMonth);
-  const cards = {
-    total,
-    thisMonth,
-    recurringInflow,
-    // Prefer server-provided percentage; else compute recurring share of total.
-    recurringPercentage: Number(
-      s.recurringPercentage ?? Math.round((recurringInflow / (total || 1)) * 100)
-    ),
-    avg: Number(s.averageIncome ?? s.average ?? s.avg ?? metrics.avg),
-    topCat:
-      s.topStream?.name ?? s.topCategory ?? (typeof s.topStream === "string" ? s.topStream : null) ?? metrics.topCat,
-    maxVal: Number(s.topStream?.amount ?? s.topAmount ?? s.maxVal ?? metrics.maxVal),
-    count: Number(s.count ?? s.totalRecords ?? incomes.length),
-  };
 
   // Filtered dataset for table
   const tableData = useMemo(() => {
     return incomes.filter((item) => {
       const matchCat = selectedCategory === "all" || item.category === selectedCategory;
       const matchStatus = selectedStatus === "all" || item.status === selectedStatus;
-      return matchCat && matchStatus;
+      const matchDate =
+        selectedMode !== "date" ||
+        !selectedDate ||
+        item.date === selectedDate ||
+        String(item.date).startsWith(selectedDate);
+      return matchCat && matchStatus && matchDate;
     });
-  }, [incomes, selectedCategory, selectedStatus]);
+  }, [incomes, selectedCategory, selectedStatus, selectedMode, selectedDate]);
+
+  // Prefer server summary (GET /incomes/summary); fall back to computed metrics.
+  const s = summaryData?.data ?? summaryData?.Data ?? summaryData ?? {};
+  const total = Number(s.totalInflow ?? s.total ?? s.totalIncome ?? s.amount ?? metrics.total);
+  const recurringInflow = Number(s.recurringInflow ?? s.recurring ?? s.recurringTotal ?? metrics.recurring);
+  const topStreamCategory =
+    s.topRevenueStream?.category ||
+    s.topRevenueStream?.name ||
+    s.topStream?.name ||
+    s.topCategory ||
+    (typeof s.topStream === "string" ? s.topStream : null) ||
+    metrics.topCat;
+  const topStreamMeta = getCategoryMeta(topStreamCategory, "income");
+
+  const recurringPct =
+    s.recurringPercentage != null
+      ? Number(s.recurringPercentage)
+      : s.recurringPercent != null
+      ? Number(s.recurringPercent)
+      : total > 0
+      ? Number(((recurringInflow / total) * 100).toFixed(1))
+      : 0;
+
+  const totalChange =
+    s.totalInflowChange != null
+      ? Number(s.totalInflowChange)
+      : s.change != null
+      ? Number(s.change)
+      : s.growth != null
+      ? Number(s.growth)
+      : s.percentageChange != null
+      ? Number(s.percentageChange)
+      : 0;
+
+  const cards = {
+    total,
+    totalChange,
+    recurringInflow,
+    recurringPercentage: recurringPct,
+    avg: Number(s.averageIncome ?? s.average ?? s.avg ?? metrics.avg),
+    topCat: topStreamCategory,
+    maxVal: Number(
+      s.topRevenueStream?.price ??
+        s.topRevenueStream?.total ??
+        s.topRevenueStream?.amount ??
+        s.topStream?.amount ??
+        metrics.maxVal
+    ),
+    count: Number(s.totalEntries ?? s.count ?? s.totalTransactions ?? totalCount),
+  };
 
   // ---- Chart data -------------------------------------------------------
-  // Use GET /incomes/analytics when it returns a shape we recognize;
-  // otherwise compute the charts from the REAL income list. Never dummy data.
+  // Use GET /incomes/velocity and GET /incomes/revenue-share from server API.
   const DONUT_COLORS = ["#10b981", "#6366f1", "#06b6d4", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6", "#e11d48"];
 
-  const { trendCategories, trendData, donutItems } = useMemo(() => {
-    const analytics = analyticsData || {};
+  const { trendCategories, trendData, trendRawPoints, donutItems } = useMemo(() => {
+    const velocity = velocityData?.data ?? velocityData?.Data ?? velocityData ?? {};
+    const revenueShare = revenueShareData?.data ?? revenueShareData?.Data ?? revenueShareData ?? {};
 
-    // --- Trend line ---
+    // --- Trend line (Income Inflow Velocity: GET /incomes/velocity) ---
     let tCats = [];
     let tData = [];
+    let tPoints = [];
+
     const trendRaw =
-      analytics.trend ?? analytics.inflow ?? analytics.monthly ?? analytics.velocity ?? null;
+      (Array.isArray(velocity) && velocity) ||
+      (Array.isArray(velocity.incomeVelocity) && velocity.incomeVelocity) ||
+      (Array.isArray(velocity.velocity) && velocity.velocity) ||
+      (Array.isArray(velocity.trend) && velocity.trend) ||
+      (Array.isArray(velocity.inflow) && velocity.inflow) ||
+      (Array.isArray(velocity.monthly) && velocity.monthly) ||
+      null;
+
     if (Array.isArray(trendRaw) && trendRaw.length) {
-      tCats = trendRaw.map((p) => p.label ?? p.month ?? p.name ?? "");
-      tData = trendRaw.map((p) => Number(p.amount ?? p.value ?? p.total ?? 0));
+      tPoints = trendRaw;
+      tCats = trendRaw.map((p) => p.label ?? p.monthName ?? (p.month ? MONTHS.find((m) => m.value === p.month)?.short : "") ?? p.name ?? "");
+      tData = trendRaw.map((p) => Number(p.total ?? p.amount ?? p.value ?? 0));
     } else if (trendRaw && Array.isArray(trendRaw.labels) && Array.isArray(trendRaw.data)) {
       tCats = trendRaw.labels;
       tData = trendRaw.data.map(Number);
+      tPoints = tCats.map((l, idx) => ({ label: l, total: tData[idx] }));
     } else if (incomes.length) {
+      // Bucket by month; render the last 6 months (empty months as 0).
       const now = new Date();
-      if (timeRange === "quarterly") {
-        // Bucket by quarter; render the last 4 quarters.
-        const byQ = {};
-        incomes.forEach((i) => {
-          const d = new Date(i.date);
-          if (isNaN(d)) return;
-          const key = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
-          byQ[key] = (byQ[key] || 0) + (Number(i.amount) || 0);
-        });
-        for (let k = 3; k >= 0; k--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - k * 3, 1);
-          const q = Math.floor(d.getMonth() / 3) + 1;
-          const key = `${d.getFullYear()}-Q${q}`;
-          tCats.push(`Q${q} ${String(d.getFullYear()).slice(2)}`);
-          tData.push(byQ[key] || 0);
-        }
-      } else {
-        // Bucket by month; render the last 6 months (empty months as 0).
-        const byMonth = {};
-        incomes.forEach((i) => {
-          const d = new Date(i.date);
-          if (isNaN(d)) return;
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          byMonth[key] = (byMonth[key] || 0) + (Number(i.amount) || 0);
-        });
-        for (let k = 5; k >= 0; k--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          tCats.push(d.toLocaleString("en-US", { month: "short" }));
-          tData.push(byMonth[key] || 0);
-        }
+      const byMonth = {};
+      incomes.forEach((i) => {
+        const d = new Date(i.date);
+        if (isNaN(d)) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        byMonth[key] = (byMonth[key] || 0) + (Number(i.amount) || 0);
+      });
+      for (let k = 5; k >= 0; k--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const lbl = d.toLocaleString("en-US", { month: "short" });
+        const val = byMonth[key] || 0;
+        tCats.push(lbl);
+        tData.push(val);
+        tPoints.push({ label: lbl, total: val, projected: false });
       }
     }
 
-    // --- Category donut ---
+    // --- Category donut (Revenue Share by Category: GET /incomes/revenue-share) ---
     let dItems = [];
     const donutRaw =
-      analytics.byCategory ?? analytics.categoryShare ?? analytics.sources ?? analytics.breakdown ?? null;
+      (Array.isArray(revenueShare?.categories) && revenueShare.categories) ||
+      (Array.isArray(revenueShare?.revenueShare?.categories) && revenueShare.revenueShare.categories) ||
+      (Array.isArray(revenueShare?.revenueShare) && revenueShare.revenueShare) ||
+      (Array.isArray(revenueShare) && revenueShare) ||
+      revenueShare?.categoryShare ||
+      revenueShare?.byCategory ||
+      revenueShare?.sources ||
+      revenueShare?.breakdown ||
+      null;
+
     if (Array.isArray(donutRaw) && donutRaw.length) {
-      const raw = donutRaw.map((item) => ({
-        name: item.name ?? item.label ?? item.category ?? "Other",
-        value: Number(item.value ?? item.percent ?? item.amount ?? 0),
-        color: item.color,
-      }));
-      // If values are absolute amounts (not %), convert to percentages.
-      const sum = raw.reduce((a, b) => a + b.value, 0);
-      const asPct = sum > 100 || sum === 0;
-      dItems = raw.map((it, i) => ({
-        name: it.name,
-        value: asPct && sum ? Math.round((it.value / sum) * 100) : Math.round(it.value),
-        color: it.color ?? DONUT_COLORS[i % DONUT_COLORS.length],
-      }));
+      const raw = donutRaw.map((item) => {
+        const catName = item.category ?? item.name ?? item.label ?? "Other";
+        const meta = getCategoryMeta(catName, "income");
+        return {
+          name: catName,
+          total: Number(item.total ?? item.amount ?? item.value ?? 0),
+          percentage:
+            item.percentage !== undefined
+              ? Number(item.percentage)
+              : item.percent !== undefined
+              ? Number(item.percent)
+              : item.pct !== undefined
+              ? Number(item.pct)
+              : null,
+          color: meta?.color ?? item.color,
+        };
+      });
+
+      const totalSum = raw.reduce((a, b) => a + (b.total || 0), 0);
+      dItems = raw.map((it, i) => {
+        let pct = it.percentage;
+        if (pct === null || isNaN(pct)) {
+          pct = totalSum > 0 ? Math.round((it.total / totalSum) * 100) : 0;
+        }
+        return {
+          name: it.name,
+          value: pct,
+          total: it.total,
+          color: it.color ?? DONUT_COLORS[i % DONUT_COLORS.length],
+        };
+      });
     } else if (incomes.length) {
-      // Compute category share from real records.
+      // Fallback: Compute category share from real records.
       const catMap = {};
       incomes.forEach((i) => {
         catMap[i.category || "Other"] = (catMap[i.category || "Other"] || 0) + (Number(i.amount) || 0);
@@ -328,13 +461,14 @@ export default function Income() {
           return {
             name,
             value: Math.round((amount / total) * 100),
+            total: amount,
             color: cat?.color ?? DONUT_COLORS[i % DONUT_COLORS.length],
           };
         });
     }
 
-    return { trendCategories: tCats, trendData: tData, donutItems: dItems };
-  }, [analyticsData, incomes, timeRange]);
+    return { trendCategories: tCats, trendData: tData, trendRawPoints: tPoints, donutItems: dItems };
+  }, [velocityData, revenueShareData, incomes, getCategoryMeta]);
 
   const donutLabels = donutItems.map((d) => d.name);
   const donutSeries = donutItems.map((d) => d.value);
@@ -388,9 +522,9 @@ export default function Income() {
         formatter: (val) => {
           if (val >= 1000) {
             const k = val / 1000;
-            return `₹${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+            return `${currencySymbol}${Number.isInteger(k) ? k : k.toFixed(1)}k`;
           }
-          return `₹${Math.round(val)}`;
+          return `${currencySymbol}${Math.round(val)}`;
         },
         style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 },
       },
@@ -402,7 +536,13 @@ export default function Income() {
     },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `₹${val.toLocaleString("en-IN")}` },
+      y: {
+        formatter: (val, opts) => {
+          const idx = opts?.dataPointIndex;
+          const pt = trendRawPoints?.[idx];
+          return `${currencySymbol}${Number(val || 0).toLocaleString()}${pt?.projected ? " (Projected)" : ""}`;
+        },
+      },
     },
   };
 
@@ -417,14 +557,30 @@ export default function Income() {
   const donutOptions = {
     chart: { type: "donut", height: 210, fontFamily: "inherit" },
     labels: donutLabels,
-    colors: donutColors,
+    colors: donutColors.length ? donutColors : ["#4f46e5"],
     dataLabels: {
-      enabled: true,
-      formatter: (val) => `${Math.round(val)}%`,
-      style: { fontSize: "11px", fontWeight: "700", colors: ["#ffffff"] },
-      dropShadow: { enabled: false },
+      enabled: false,
     },
-    plotOptions: { pie: { donut: { size: "65%" } } },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "72%",
+          labels: {
+            show: true,
+            name: { show: true, fontSize: "11px", fontWeight: 600, color: "#64748b", offsetY: -4 },
+            value: { show: true, fontSize: "16px", fontWeight: 800, color: "#0f172a", offsetY: 4, formatter: (val) => `${val}%` },
+            total: {
+              show: true,
+              label: "Share",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              color: "#64748b",
+              formatter: () => "100%",
+            },
+          },
+        },
+      },
+    },
     legend: { show: false },
     stroke: { width: 2, colors: ["#ffffff"] },
     tooltip: {
@@ -537,19 +693,28 @@ export default function Income() {
       selector: (row) => row.source,
       sortable: true,
       minWidth: "240px",
-      cell: (row) => (
-        <div className="d-flex align-items-center gap-2">
-          <div className="ur-income-avatar-box">
-            <FiArrowUpRight size={15} color="#10b981" />
-          </div>
-          <div>
-            <div className="fw-700 text-dark fs-12.5px">{row.source}</div>
-            <div className="text-muted fs-11px text-truncate" style={{ maxWidth: "200px" }}>
-              {row.description || row.id}
+      cell: (row) => {
+        const catInfo = getCategoryMeta(row.category, "income");
+        return (
+          <div className="d-flex align-items-center gap-2">
+            <div
+              className="ur-income-avatar-box"
+              style={{
+                backgroundColor: catInfo.bg || "#ecfdf5",
+                color: catInfo.color || "#10b981",
+              }}
+            >
+              {catInfo.icon || <FiArrowUpRight size={15} />}
+            </div>
+            <div>
+              <div className="fw-700 text-dark fs-12.5px">{row.source}</div>
+              <div className="text-muted fs-11px text-truncate" style={{ maxWidth: "200px" }}>
+                {row.description || row.id}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       name: "Category",
@@ -572,60 +737,17 @@ export default function Income() {
       },
     },
     {
-      name: "Account / Method",
-      selector: (row) => row.account,
-      sortable: true,
-      minWidth: "160px",
-      cell: (row) => (
-        <div className="d-flex align-items-center gap-1 fs-12px">
-          {row.account.includes("HDFC") || row.account.includes("ICICI") || row.account.includes("SBI") ? (
-            <BsBank2 className="text-primary me-1" size={12} />
-          ) : row.account.includes("GPay") ? (
-            <SiGooglepay className="text-info me-1" size={13} />
-          ) : row.account.includes("PhonePe") ? (
-            <SiPhonepe className="text-primary me-1" size={13} />
-          ) : (
-            <IoWalletOutline className="text-muted me-1" size={13} />
-          )}
-          <span className="text-dark fw-500">{row.account}</span>
-        </div>
-      ),
-    },
-    {
-      name: "Date & Time",
+      name: "Date",
       selector: (row) => row.date,
       sortable: true,
       width: "140px",
       cell: (row) => (
-        <div>
-          <div className="fw-600 text-dark fs-11.5px">
-            {new Date(row.date).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </div>
-          <div className="text-muted fs-10.5px">{row.time}</div>
-        </div>
-      ),
-    },
-    {
-      name: "Status",
-      selector: (row) => row.status,
-      sortable: true,
-      width: "120px",
-      cell: (row) => (
-        <span
-          className={`ur-status-pill ${
-            row.status === "Received" ? "success" : "warning"
-          }`}
-        >
-          {row.status === "Received" ? (
-            <FiCheckCircle size={10} className="me-1" />
-          ) : (
-            <FiClock size={10} className="me-1" />
-          )}
-          {row.status}
+        <span className="fw-600 text-dark fs-11.5px">
+          {new Date(row.date).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
         </span>
       ),
     },
@@ -638,7 +760,7 @@ export default function Income() {
       cell: (row) => (
         <div className="text-end">
           <div className="fw-800 text-success fs-13px">
-            +₹{Number(row.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            +{currencySymbol}{Number(row.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </div>
           {row.isRecurring && (
             <span className="text-muted fs-10px d-flex align-items-center justify-content-end gap-1">
@@ -704,7 +826,17 @@ export default function Income() {
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <MonthYearFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            selectedDate={selectedDate}
+            selectedMode={selectedMode}
+            onChangeMonth={setSelectedMonth}
+            onChangeYear={setSelectedYear}
+            onChangeDate={setSelectedDate}
+            onChangeMode={setSelectedMode}
+          />
           <Button className="ms-btn-income" onClick={handleOpenAdd}>
             <FiPlus size={14} />
             <span>Add New Income</span>
@@ -713,17 +845,19 @@ export default function Income() {
       </div>
 
       {/* ===================================================================
-          2. TOP 4 METRICS CARDS
+          2. TOP 3 METRICS CARDS (Powered by /incomes/summary)
           =================================================================== */}
       <Row className="g-3 mb-3">
-        <Col xs={12} sm={6} xl={3}>
+        <Col xs={12} sm={6} md={4}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <div className="ms-stat-title">Total Inflow (Month)</div>
+                  <div className="ms-stat-title">
+                    Total Inflow ({selectedMode === "date" ? "Day" : "Month"})
+                  </div>
                   <div className="ms-stat-val text-success">
-                    ₹{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {currencySymbol}{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#ecfdf5" }}>
@@ -731,47 +865,31 @@ export default function Income() {
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="ms-trend-pill positive">
-                  <FiTrendingUp size={11} /> +14.8%
+                {cards.totalChange !== 0 ? (
+                  <span className={`ms-trend-pill ${cards.totalChange >= 0 ? "positive" : "negative"}`}>
+                    <FiTrendingUp size={11} /> {cards.totalChange >= 0 ? `+${cards.totalChange}%` : `${cards.totalChange}%`}
+                  </span>
+                ) : (
+                  <span className="ms-trend-pill neutral">
+                    <FiTrendingUp size={11} /> 0%
+                  </span>
+                )}
+                <span className="ms-stat-sub-text">
+                  {cards.count} {cards.count === 1 ? "entry" : "entries"} recorded
                 </span>
-                <span className="ms-stat-sub-text">vs previous 30 days</span>
               </div>
             </Card.Body>
           </Card>
         </Col>
 
-        <Col xs={12} sm={6} xl={3}>
-          <Card className="ms-premium-card h-100 border-0">
-            <Card.Body className="p-3 d-flex flex-column justify-content-between">
-              <div className="d-flex justify-content-between align-items-start mb-2">
-                <div>
-                  <div className="ms-stat-title">Recurring Inflow</div>
-                  <div className="ms-stat-val">
-                    ₹{cards.recurringInflow.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-                <div className="ms-stat-icon-box" style={{ backgroundColor: "#eef2ff" }}>
-                  <FiRepeat size={19} color="#4f46e5" />
-                </div>
-              </div>
-              <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="text-primary fw-700 fs-11px">
-                  {cards.recurringPercentage}% of total
-                </span>
-                <span className="ms-stat-sub-text">Salary & Rentals</span>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col xs={12} sm={6} xl={3}>
+        <Col xs={12} sm={6} md={4}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
                   <div className="ms-stat-title">Average Income / Entry</div>
                   <div className="ms-stat-val">
-                    ₹{cards.avg.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {currencySymbol}{cards.avg.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#f5f3ff" }}>
@@ -779,16 +897,16 @@ export default function Income() {
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="ms-trend-pill positive">
-                  <FiTrendingUp size={11} /> +6.4%
+                <span className="text-dark fw-700 fs-11px">
+                  {currencySymbol}{cards.avg.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
                 </span>
-                <span className="ms-stat-sub-text">Across {cards.count} records</span>
+                <span className="ms-stat-sub-text">Per transaction avg</span>
               </div>
             </Card.Body>
           </Card>
         </Col>
 
-        <Col xs={12} sm={6} xl={3}>
+        <Col xs={12} sm={6} md={4}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
@@ -798,15 +916,15 @@ export default function Income() {
                     {cards.topCat}
                   </div>
                 </div>
-                <div className="ms-stat-icon-box" style={{ backgroundColor: "#ecfeff" }}>
-                  <FiBriefcase size={19} color="#06b6d4" />
+                <div className="ms-stat-icon-box" style={{ backgroundColor: topStreamMeta?.bg || "#ecfeff" }}>
+                  {topStreamMeta?.icon || <FiBriefcase size={19} color="#06b6d4" />}
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-dark fw-700 fs-11px">
-                  ₹{cards.maxVal.toLocaleString("en-IN")}
+                  {currencySymbol}{cards.maxVal.toLocaleString("en-IN")}
                 </span>
-                <span className="ms-stat-sub-text">Primary Source</span>
+                <span className="ms-stat-sub-text">Top stream</span>
               </div>
             </Card.Body>
           </Card>
@@ -825,26 +943,8 @@ export default function Income() {
                 <div>
                   <h5 className="ms-card-title mb-0">Income Inflow Velocity</h5>
                   <p className="text-muted fs-11px mb-0">
-                    {timeRange === "quarterly" ? "Last 4 quarters progression" : "6-Month progression & projected growth"}
+                    {trendCategories.length > 0 ? `${trendCategories.length}-Month` : "6-Month"} progression &amp; projected growth
                   </p>
-                </div>
-                <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-6px">
-                  <Button
-                    variant={timeRange === "monthly" ? "white" : "transparent"}
-                    size="sm"
-                    className={`ur-chart-filter-btn ${timeRange === "monthly" ? "active" : ""}`}
-                    onClick={() => setTimeRange("monthly")}
-                  >
-                    Monthly
-                  </Button>
-                  <Button
-                    variant={timeRange === "quarterly" ? "white" : "transparent"}
-                    size="sm"
-                    className={`ur-chart-filter-btn ${timeRange === "quarterly" ? "active" : ""}`}
-                    onClick={() => setTimeRange("quarterly")}
-                  >
-                    Quarterly
-                  </Button>
                 </div>
               </div>
 
@@ -871,25 +971,29 @@ export default function Income() {
               </div>
 
               {donutSeries.length ? (
-                <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
-                  <div style={{ width: "180px", height: "200px" }}>
-                    <Chart options={donutOptions} series={donutSeries} type="donut" height={200} />
-                  </div>
+                <Row className="align-items-center g-3 my-auto py-1">
+                  <Col xs={12} sm={6} className="d-flex justify-content-center">
+                    <div style={{ width: "170px", height: "185px" }}>
+                      <Chart options={donutOptions} series={donutSeries} type="donut" height={185} />
+                    </div>
+                  </Col>
 
-                  <div className="ms-donut-legend ps-2" style={{ minWidth: "150px" }}>
-                    {donutItems.map((item, i) => (
-                      <div key={i} className="d-flex align-items-center justify-content-between mb-1 fs-11px">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
-                          <span className="text-dark fw-600">{item.name}</span>
+                  <Col xs={12} sm={6}>
+                    <div className="d-flex flex-column gap-1.5" style={{ maxHeight: "175px", overflowY: "auto" }}>
+                      {donutItems.map((item, i) => (
+                        <div key={i} className="ms-donut-legend-card fs-11px">
+                          <div className="d-flex align-items-center gap-2 text-truncate me-2">
+                            <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
+                            <span className="text-dark fw-600 text-truncate">{item.name}</span>
+                          </div>
+                          <span className="fw-700 text-dark flex-shrink-0">{item.value}%</span>
                         </div>
-                        <span className="fw-700 text-dark">{item.value}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ))}
+                    </div>
+                  </Col>
+                </Row>
               ) : (
-                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 200 }}>
+                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 185 }}>
                   No category data to chart yet.
                 </div>
               )}
@@ -907,32 +1011,33 @@ export default function Income() {
         keyField="id"
         loading={incomesLoading}
         title="All Income Transactions"
-        subtitle={`${periodOptions.find((p) => p.value === selectedPeriod)?.label || "This Month"} • ${tableData.length} income log(s)`}
+        subtitle={`${selectedMonthName} ${selectedYear} • ${totalCount} income log(s)`}
         searchPlaceholder="Search by payer, source, or reference..."
         selectableRows={true}
         initialSortField="date"
         initialSortOrder="desc"
-        defaultPageSize={10}
+        defaultPageSize={limit}
+        totalRows={totalCount}
+        page={page}
+        onPageChange={(p) => setPage(p)}
+        onPageSizeChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
         onBulkDelete={handleBulkDelete}
         exportFileName="Income_Statements"
         filters={
           <div className="ur-inline-filters">
-            {/* Period Filter — GET /incomes?month=&year= | ?all=true | (default current month) */}
-            <Select
-              value={periodOptions.find((p) => p.value === selectedPeriod)}
-              onChange={(opt) => setSelectedPeriod(opt ? opt.value : "current")}
-              options={periodOptions}
-              styles={filterSelectStyles}
-              isSearchable={false}
-            />
-
             {/* Category Filter */}
             <Select
               value={[
                 { value: "all", label: "All Categories" },
                 ...incomeCategories.map((c) => ({ value: c.name, label: c.name })),
               ].find((c) => c.value === selectedCategory) || { value: "all", label: "All Categories" }}
-              onChange={(opt) => setSelectedCategory(opt ? opt.value : "all")}
+              onChange={(opt) => {
+                setSelectedCategory(opt ? opt.value : "all");
+                setPage(1);
+              }}
               options={[
                 { value: "all", label: "All Categories" },
                 ...incomeCategories.map((c) => ({ value: c.name, label: c.name })),
@@ -994,7 +1099,7 @@ export default function Income() {
 
               <Col xs={12}>
                 <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+                  <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
                   <Form.Control
                     type="number"
                     required
@@ -1011,11 +1116,9 @@ export default function Income() {
               <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
-                  <Form.Control
-                    type="date"
+                  <AppDatePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="ur-form-input"
+                    onChange={(dateStr) => setFormData({ ...formData, date: dateStr })}
                   />
                 </Form.Group>
               </Col>
@@ -1032,18 +1135,6 @@ export default function Income() {
                   />
                 </Form.Group>
               </Col>
-
-              <Col xs={12}>
-                <Form.Check
-                  type="checkbox"
-                  id="recurring-income-chk"
-                  label="Mark as recurring monthly income"
-                  checked={formData.isRecurring}
-                  onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
-                  className="ur-checkbox-label"
-                />
-              </Col>
-
             </Row>
           </Modal.Body>
 
@@ -1105,7 +1196,7 @@ export default function Income() {
 
               <Col xs={12}>
                 <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+                  <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
                   <Form.Control
                     type="number"
                     required
@@ -1121,11 +1212,9 @@ export default function Income() {
               <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
-                  <Form.Control
-                    type="date"
+                  <AppDatePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="ur-form-input"
+                    onChange={(dateStr) => setFormData({ ...formData, date: dateStr })}
                   />
                 </Form.Group>
               </Col>
@@ -1141,18 +1230,6 @@ export default function Income() {
                   />
                 </Form.Group>
               </Col>
-
-              <Col xs={12}>
-                <Form.Check
-                  type="checkbox"
-                  id="recurring-income-edit-chk"
-                  label="Mark as recurring monthly income"
-                  checked={formData.isRecurring}
-                  onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
-                  className="ur-checkbox-label"
-                />
-              </Col>
-
             </Row>
           </Modal.Body>
 
@@ -1177,7 +1254,7 @@ export default function Income() {
           </div>
           <h5 className="fw-700 text-dark mb-1">Delete Income Record?</h5>
           <p className="text-muted fs-12px mb-3">
-            Are you sure you want to delete <strong>{activeIncome?.source}</strong> (₹{activeIncome?.amount?.toLocaleString("en-IN")})? This action cannot be undone.
+            Are you sure you want to delete <strong>{activeIncome?.source}</strong> ({currencySymbol}{activeIncome?.amount?.toLocaleString()})? This action cannot be undone.
           </p>
           <div className="d-flex justify-content-center gap-2">
             <Button variant="light" size="sm" onClick={() => setShowDeleteModal(false)} className="rounded-6px px-3">
@@ -1206,7 +1283,7 @@ export default function Income() {
               <div className="ur-details-highlight-card p-3 rounded-10px mb-3 text-center">
                 <span className="text-muted fs-11px">TOTAL AMOUNT CREDITED</span>
                 <div className="fw-800 text-success fs-24px my-1">
-                  +₹{Number(activeIncome.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  +{currencySymbol}{Number(activeIncome.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
                 <Badge bg="success-subtle" className="text-success fs-11px px-2 py-1 rounded-6px">
                   Status: {activeIncome.status}
@@ -1232,9 +1309,9 @@ export default function Income() {
                   <span className="fw-600 text-dark">{activeIncome.account}</span>
                 </div>
                 <div className="d-flex justify-content-between py-1 border-bottom">
-                  <span className="text-muted">Date &amp; Timestamp:</span>
+                  <span className="text-muted">Date:</span>
                   <span className="fw-600 text-dark">
-                    {activeIncome.date} at {activeIncome.time}
+                    {activeIncome.date}
                   </span>
                 </div>
                 <div className="d-flex justify-content-between py-1 border-bottom">

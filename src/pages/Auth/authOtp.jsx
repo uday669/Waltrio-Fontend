@@ -139,10 +139,11 @@ export default function AuthOtp() {
     <Auth>
       <div className="after-lg-card">
         <div className="mb-4 text-center text-sm-start">
-          <div className="d-inline-flex align-items-center justify-content-center p-2 rounded-circle ur-bg-1942C31A ur-text-theme mb-3">
-            <FiShield size={26} />
+          <div className="auth-badge-pill">
+            <span className="status-dot"></span>
+            <span>Security Verification</span>
           </div>
-          <h2 className="auth-title">Verify Your Email ✉️</h2>
+          <h2 className="auth-title">Verify your email ✉️</h2>
           <p className="auth-subtitle">
             Enter the {OTP_LENGTH}-digit code sent to <strong className="text-dark">{email || "your email address"}</strong>
           </p>
@@ -155,15 +156,15 @@ export default function AuthOtp() {
         )}
 
         {resendSuccess && (
-          <div className="d-flex align-items-center gap-2 p-2 px-3 rounded-3 bg-success-subtle text-success fs-13px mb-3">
+          <div className="d-flex align-items-center gap-2 p-2 px-3 rounded-3 bg-success-subtle text-success fs-13px mb-3 border border-success-subtle">
             <FiCheckCircle size={16} />
-            <span>A new {OTP_LENGTH}-digit OTP code has been sent to your email!</span>
+            <span className="fw-600">A new {OTP_LENGTH}-digit verification code has been sent!</span>
           </div>
         )}
 
         <form onSubmit={handleVerify}>
           <Row className="g-4">
-            {/* 6-Digit OTP Inputs */}
+            {/* 4-Digit OTP Inputs */}
             <Col xs={12}>
               <div className="otp-container" onPaste={handlePaste}>
                 {otp.map((digit, index) => (
@@ -188,8 +189,8 @@ export default function AuthOtp() {
 
             {/* Resend Timer & Resend Trigger */}
             <Col xs={12}>
-              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 fs-14px">
-                <span className="ur-text-5E5E5E fs-14px">Didn't receive the code?</span>
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 fs-13px">
+                <span className="text-muted fs-13px">Didn't receive the code?</span>
                 {canResend ? (
                   <button
                     type="button"
@@ -197,11 +198,11 @@ export default function AuthOtp() {
                     className="btn-resend-otp"
                     disabled={resending}
                   >
-                    <FiRefreshCw size={14} />
+                    <FiRefreshCw size={13} />
                     <span>{resending ? "Sending..." : "Resend Code"}</span>
                   </button>
                 ) : (
-                  <div className="d-inline-flex align-items-center gap-1 ur-text-theme fw-600">
+                  <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill bg-light text-primary fw-600 fs-12px">
                     <span>
                       Resend in {String(Math.floor(timer / 60)).padStart(2, "0")}:
                       {String(timer % 60).padStart(2, "0")}
@@ -219,10 +220,13 @@ export default function AuthOtp() {
                 disabled={loading}
               >
                 {loading ? (
-                  <span>Verifying Code...</span>
+                  <span className="d-flex align-items-center gap-2">
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Verifying Code...</span>
+                  </span>
                 ) : (
                   <>
-                    <FiCheckCircle size={18} />
+                    <FiCheckCircle size={17} />
                     <span>Verify &amp; Continue</span>
                   </>
                 )}
@@ -234,9 +238,9 @@ export default function AuthOtp() {
               <div className="text-center pt-2">
                 <Link
                   to="/login"
-                  className="d-inline-flex align-items-center gap-2 ur-text-5E5E5E fs-14px fw-500 link-theme"
+                  className="d-inline-flex align-items-center gap-2 text-muted fs-13px fw-600 link-theme"
                 >
-                  <FiArrowLeft size={16} />
+                  <FiArrowLeft size={15} />
                   <span>Back to Sign In</span>
                 </Link>
               </div>

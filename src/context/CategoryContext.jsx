@@ -32,6 +32,7 @@ import {
   useUpdateCategory,
   useDeleteCategory,
 } from "../hooks/useCategoriesApi";
+import { useAuth } from "./AuthContext";
 
 // Icon Map helper to render icon components by key name
 export const ICON_MAP = {
@@ -100,13 +101,16 @@ export const PRESET_COLORS = [
 const CategoryContext = createContext(null);
 
 export function CategoryProvider({ children }) {
+  const { isAuthenticated, token } = useAuth();
+  const isAuth = Boolean(isAuthenticated || token);
+
   // Query 1: GET /v1/api/categories/income
   const {
     data: incomeCategories = [],
     isLoading: isIncomeLoading,
     isError: isIncomeError,
     refetch: refetchIncome,
-  } = useIncomeCategoriesQuery({ retry: 1 });
+  } = useIncomeCategoriesQuery({ enabled: isAuth, retry: 1 });
 
   // Query 2: GET /v1/api/categories/expense
   const {
@@ -114,7 +118,7 @@ export function CategoryProvider({ children }) {
     isLoading: isExpenseLoading,
     isError: isExpenseError,
     refetch: refetchExpense,
-  } = useExpenseCategoriesQuery({ retry: 1 });
+  } = useExpenseCategoriesQuery({ enabled: isAuth, retry: 1 });
 
   // API Mutations
   const { mutateAsync: createCategoryMut, isPending: creating } = useCreateCategory();
@@ -149,6 +153,39 @@ export function CategoryProvider({ children }) {
     return await deleteCategoryMut(id);
   };
 
+const DEFAULT_INCOME_META = {
+  salary: { icon: <FiBriefcase size={16} />, iconKey: "FiBriefcase", color: "#10b981", bg: "#ecfdf5" },
+  freelance: { icon: <FiLayers size={16} />, iconKey: "FiLayers", color: "#06b6d4", bg: "#ecfeff" },
+  freelancing: { icon: <FiLayers size={16} />, iconKey: "FiLayers", color: "#06b6d4", bg: "#ecfeff" },
+  investment: { icon: <FiTrendingUp size={16} />, iconKey: "FiTrendingUp", color: "#8b5cf6", bg: "#f5f3ff" },
+  investments: { icon: <FiTrendingUp size={16} />, iconKey: "FiTrendingUp", color: "#8b5cf6", bg: "#f5f3ff" },
+  business: { icon: <FiDollarSign size={16} />, iconKey: "FiDollarSign", color: "#4f46e5", bg: "#eef2ff" },
+  rental: { icon: <FiHome size={16} />, iconKey: "FiHome", color: "#f59e0b", bg: "#fffbeb" },
+  bonus: { icon: <FiGift size={16} />, iconKey: "FiGift", color: "#ec4899", bg: "#fdf2f8" },
+  dividends: { icon: <FiPieChart size={16} />, iconKey: "FiPieChart", color: "#14b8a6", bg: "#f0fdfa" },
+  commission: { icon: <FiAward size={16} />, iconKey: "FiAward", color: "#f97316", bg: "#fff7ed" },
+  sidehustle: { icon: <FiSmartphone size={16} />, iconKey: "FiSmartphone", color: "#8b5cf6", bg: "#f5f3ff" },
+};
+
+const DEFAULT_EXPENSE_META = {
+  food: { icon: <FiCoffee size={16} />, iconKey: "FiCoffee", color: "#f59e0b", bg: "#fffbeb" },
+  dining: { icon: <FiCoffee size={16} />, iconKey: "FiCoffee", color: "#f59e0b", bg: "#fffbeb" },
+  "food & dining": { icon: <FiCoffee size={16} />, iconKey: "FiCoffee", color: "#f59e0b", bg: "#fffbeb" },
+  groceries: { icon: <FiShoppingBag size={16} />, iconKey: "FiShoppingBag", color: "#ec4899", bg: "#fdf2f8" },
+  housing: { icon: <FiHome size={16} />, iconKey: "FiHome", color: "#4f46e5", bg: "#eef2ff" },
+  rent: { icon: <FiHome size={16} />, iconKey: "FiHome", color: "#4f46e5", bg: "#eef2ff" },
+  utilities: { icon: <FiZap size={16} />, iconKey: "FiZap", color: "#06b6d4", bg: "#ecfeff" },
+  bills: { icon: <FiFileText size={16} />, iconKey: "FiFileText", color: "#06b6d4", bg: "#ecfeff" },
+  shopping: { icon: <FiShoppingBag size={16} />, iconKey: "FiShoppingBag", color: "#ec4899", bg: "#fdf2f8" },
+  health: { icon: <FiActivity size={16} />, iconKey: "FiActivity", color: "#ef4444", bg: "#fef2f2" },
+  healthcare: { icon: <FiShield size={16} />, iconKey: "FiShield", color: "#ef4444", bg: "#fef2f2" },
+  education: { icon: <FiBook size={16} />, iconKey: "FiBook", color: "#8b5cf6", bg: "#f5f3ff" },
+  entertainment: { icon: <FiMusic size={16} />, iconKey: "FiMusic", color: "#ec4899", bg: "#fdf2f8" },
+  travel: { icon: <FiGlobe size={16} />, iconKey: "FiGlobe", color: "#14b8a6", bg: "#f0fdfa" },
+  transport: { icon: <FiTruck size={16} />, iconKey: "FiTruck", color: "#ea580c", bg: "#fff7ed" },
+  tech: { icon: <FiCpu size={16} />, iconKey: "FiCpu", color: "#3b82f6", bg: "#eff6ff" },
+};
+
   // Helper to resolve icon, color, bg for a given category name & type from API data
   const getCategoryMeta = (categoryName, type = "expense") => {
     const isInc = (type || "").toString().toLowerCase() === "income";
@@ -159,14 +196,29 @@ export function CategoryProvider({ children }) {
       list.find((c) => (c.name || c.categoryName)?.toString().toLowerCase().trim() === target) ||
       allCategories.find((c) => (c.name || c.categoryName)?.toString().toLowerCase().trim() === target);
 
+    const defaultMap = isInc ? DEFAULT_INCOME_META : DEFAULT_EXPENSE_META;
+    const smartFallback = defaultMap[target] || Object.entries(defaultMap).find(([k]) => target.includes(k))?.[1];
+
     if (found) {
       const iconKey = found.iconKey || found.categoryIcon;
+      const iconComp = ICON_MAP[iconKey] || smartFallback?.icon || (isInc ? <FiDollarSign size={16} /> : <FiTag size={16} />);
       return {
         ...found,
         name: found.name || found.categoryName,
-        color: found.color || found.themeColor || (isInc ? "#10b981" : "#4f46e5"),
-        bg: found.bg || (isInc ? "#ecfdf5" : "#eef2ff"),
-        icon: ICON_MAP[iconKey] || (isInc ? <FiDollarSign size={16} /> : <FiTag size={16} />),
+        color: found.color || found.themeColor || smartFallback?.color || (isInc ? "#10b981" : "#4f46e5"),
+        bg: found.bg || smartFallback?.bg || (isInc ? "#ecfdf5" : "#eef2ff"),
+        icon: iconComp,
+      };
+    }
+
+    if (smartFallback) {
+      return {
+        name: categoryName || "Other",
+        color: smartFallback.color,
+        bg: smartFallback.bg,
+        icon: smartFallback.icon,
+        iconKey: smartFallback.iconKey,
+        type: isInc ? "income" : "expense",
       };
     }
 

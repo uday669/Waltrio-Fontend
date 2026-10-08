@@ -7,32 +7,37 @@ export const ENDPOINTS = {
     login: "/auth/login",
     resendOtp: "/auth/resend-otp",
     verifyOtp: "/auth/verify-otp",
-    me: "/auth/me",
+    forgotPassword: "/auth/forgot-password",
+    forgotPasswordVerifyOtp: "/auth/forgot-password/verify-otp",
     profile: "/auth/profile",
   },
+  profile: "/auth/profile",
 
   incomes: {
     list: "/incomes",
     summary: "/incomes/summary",
-    analytics: "/incomes/analytics",
+    velocity: "/incomes/velocity",
+    revenueShare: "/incomes/revenue-share",
     create: "/incomes",
     byId: (id) => `/incomes/${id}`,
   },
   expenses: {
     list: "/expenses",
     summary: "/expenses/summary",
-    analytics: "/expenses/analytics",
+    spendingDistribution: "/expenses/spending-distribution",
+    weeklyOutflow: "/expenses/weekly-outflow",
     create: "/expenses",
     byId: (id) => `/expenses/${id}`,
   },
   dashboard: {
-    overview: "/dashboard/overview",
-    totalBalance: "/dashboard/total-balance",
+    yearSummary: "/dashboard/year-summary",
+    analyticsYear: "/dashboard/analytics-year",
   },
   budget: {
     // Whole budgets page (cards + chart + caps). POST/PUT here upsert a cap.
     category: "/budget/category",
     categoryById: (id) => `/budget/category/${id}`,
+    copyNextMonth: "/budget/category/copy-next-month",
   },
   categories: {
     income: "/categories/income",

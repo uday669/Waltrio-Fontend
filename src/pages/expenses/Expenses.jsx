@@ -44,7 +44,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useExpenses,
   useExpenseSummary,
-  useExpenseAnalytics,
+  useExpenseSpendingDistribution,
+  useExpenseWeeklyOutflow,
   useCreateExpense,
   useUpdateExpense,
   useDeleteExpense,
@@ -52,48 +53,116 @@ import {
 import { deleteExpense } from "../../api/expenses.api";
 import { toast } from "../../lib/toast";
 import { useCategories } from "../../context/CategoryContext";
+import { useAuth } from "../../context/AuthContext";
+import MonthYearFilter, { MONTHS } from "../../components/common/MonthYearFilter";
+import AppDatePicker from "../../components/common/AppDatePicker";
 
 export default function Expenses() {
   const queryClient = useQueryClient();
+  const { currencySymbol } = useAuth();
   const { expenseCategories, getCategoryMeta } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
   const [timeRange, setTimeRange] = useState("weekly");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  // Server-side period filter for GET /expenses:
-  //   "current" -> no params (backend defaults to current month)
-  //   "all"     -> ?all=true
-  //   "YYYY-M"  -> ?month=M&year=YYYY
-  const [selectedPeriod, setSelectedPeriod] = useState("current");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedMode, setSelectedMode] = useState("month");
 
-  // Period dropdown options: This Month, All Time, then the last 11 months.
-  const periodOptions = useMemo(() => {
-    const opts = [
-      { value: "current", label: "This Month" },
-      { value: "all", label: "All Time" },
-    ];
-    const now = new Date();
-    for (let k = 1; k <= 11; k++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
-      opts.push({
-        value: `${d.getFullYear()}-${d.getMonth() + 1}`,
-        label: d.toLocaleString("en-US", { month: "long", year: "numeric" }),
-      });
+  const selectedMonthName = useMemo(() => {
+    return MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Month";
+  }, [selectedMonth]);
+
+  // Translate active filter mode into GET /expenses list query params:
+  // ?filter=day&day=3&month=10&year=2026 or ?filter=month&month=10&year=2026 or ?filter=year&year=2026
+  const queryParams = useMemo(() => {
+    const base = {
+      category: selectedCategory,
+      status: selectedStatus,
+      page,
+      limit,
+    };
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          ...base,
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
     }
-    return opts;
-  }, []);
+    if (selectedMode === "year") {
+      return {
+        ...base,
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      ...base,
+      filter: "month",
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear, selectedCategory, selectedStatus, page, limit]);
 
-  // Translate the selected period into GET /expenses query params.
-  const periodParams = useMemo(() => {
-    if (selectedPeriod === "all") return { all: true };
-    if (selectedPeriod === "current") return {};
-    const [year, month] = selectedPeriod.split("-").map(Number);
-    return { month, year };
-  }, [selectedPeriod]);
+  // Summary & Spending Distribution Query Params: ?filter=month&month=10&year=2026 or ?filter=day&day=15&month=10&year=2026 or ?filter=year&year=2026
+  const summaryParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          filter: "day",
+          day: parts[2],
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    if (selectedMode === "year") {
+      return {
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      filter: "month",
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
 
-  // Monthly budget limit for the (computed) daily-pace metric.
-  const monthlyBudgetLimit = 35000;
+  const distributionParams = summaryParams;
+
+  // Weekly Outflow Query Params: ONLY supports filter=month&month=10&year=2026 or filter=year&year=2026
+  const weeklyOutflowParams = useMemo(() => {
+    if (selectedMode === "year") {
+      return {
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 2) {
+        return {
+          filter: "month",
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    return {
+      filter: "month",
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
 
   // ---- Server data (TanStack Query) -------------------------------------
   const {
@@ -101,13 +170,7 @@ export default function Expenses() {
     isLoading: expensesLoading,
     isError: expensesIsError,
     error: expensesErr,
-  } = useExpenses({
-    ...periodParams,
-    category: selectedCategory,
-    status: selectedStatus,
-    page,
-    limit,
-  });
+  } = useExpenses(queryParams);
 
   React.useEffect(() => {
     if (expensesIsError) {
@@ -119,9 +182,9 @@ export default function Expenses() {
   const expenses = useMemo(() => expensesData || [], [expensesData]);
   const totalCount = expensesData?.total ?? expensesData?.pagination?.total ?? expenses.length;
 
-
-  const { data: summaryData } = useExpenseSummary();
-  const { data: analyticsData } = useExpenseAnalytics({ range: timeRange });
+  const { data: summaryData } = useExpenseSummary(summaryParams);
+  const { data: distributionData } = useExpenseSpendingDistribution(distributionParams);
+  const { data: weeklyOutflowData } = useExpenseWeeklyOutflow(weeklyOutflowParams);
 
   // ---- Mutations --------------------------------------------------------
   const { mutate: createExpenseMut, isPending: creating } = useCreateExpense({
@@ -193,14 +256,13 @@ export default function Expenses() {
     }
   };
 
-  // Calculate Metrics
+  // Calculate Local Fallback Metrics
   const metrics = useMemo(() => {
     const total = expenses.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     const paid = expenses
       .filter((e) => e.status === "Paid")
       .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-    const budgetPct = Math.min(100, Math.round((total / monthlyBudgetLimit) * 100));
-    const dailyAvg = Math.round(total / 20); // 20 days so far in month
+    const dailyAvg = Math.round(total / 20);
 
     // Top Category
     const catMap = {};
@@ -216,43 +278,65 @@ export default function Expenses() {
       }
     });
 
-    return { total, paid, budgetPct, dailyAvg, topCat, maxVal };
+    return { total, paid, dailyAvg, topCat, maxVal };
   }, [expenses]);
-
-  // Prefer server summary (GET /expenses/summary); fall back to computed metrics.
-  const sx = summaryData || {};
-  const cards = {
-    total: Number(sx.totalOutflow ?? sx.totalExpenses ?? sx.total ?? metrics.total),
-    dailyAvg: Number(sx.dailyAverage ?? sx.dailyAvg ?? sx.averageDaily ?? metrics.dailyAvg),
-    topCat: sx.topCategory?.name ?? sx.largestCategory ?? (typeof sx.topCategory === "string" ? sx.topCategory : null) ?? metrics.topCat,
-    maxVal: Number(sx.topCategory?.amount ?? sx.topCategoryAmount ?? sx.maxVal ?? metrics.maxVal),
-  };
 
   // Filtered dataset for table
   const tableData = useMemo(() => {
     return expenses.filter((item) => {
       const matchCat = selectedCategory === "all" || item.category === selectedCategory;
       const matchStatus = selectedStatus === "all" || item.status === selectedStatus;
-      return matchCat && matchStatus;
+      const matchDate =
+        selectedMode !== "date" ||
+        !selectedDate ||
+        item.date === selectedDate ||
+        String(item.date).startsWith(selectedDate);
+      return matchCat && matchStatus && matchDate;
     });
-  }, [expenses, selectedCategory, selectedStatus]);
+  }, [expenses, selectedCategory, selectedStatus, selectedMode, selectedDate]);
 
-  // ---- Chart data from GET /expenses/analytics (fallback: compute) ------
+  // Derive metric cards from GET /expenses/summary
+  const s = summaryData || {};
+  const largestCatName =
+    s.largestCostCategory?.category ||
+    s.largestCostCategory?.name ||
+    (typeof s.largestCostCategory === "string" ? s.largestCostCategory : metrics.topCat);
+  const largestCatMeta = getCategoryMeta(largestCatName, "expense");
+
+  const cards = {
+    total: Number(s.totalOutflow ?? s.totalSpent ?? metrics.total),
+    dailyAvg: Number(s.dailyAverageSpend ?? metrics.dailyAvg),
+    topCat: largestCatName,
+    maxVal: Number(
+      s.largestCostCategory?.total ??
+        s.largestCostCategory?.price ??
+        s.largestCostCategory?.amount ??
+        metrics.maxVal
+    ),
+    totalEntries: s.totalEntries ?? tableData.length ?? expenses.length,
+  };
+
+  // ---- Chart data from GET /expenses/weekly-outflow & GET /expenses/spending-distribution (fallback: compute) ------
   const EXP_DONUT_COLORS = ["#4f46e5", "#8b5cf6", "#f59e0b", "#ec4899", "#10b981", "#06b6d4", "#ef4444", "#d97706"];
-  const { trendCats, trendSpent, trendTarget, donutItems } = useMemo(() => {
-    const a = analyticsData || {};
-
-    // Spending trend
+  const { trendCats, trendSpent, donutItems } = useMemo(() => {
+    // 1. Weekly Outflow
     let tCats = [];
     let tSpent = [];
-    let tTarget = [];
-    const tr = a.trend ?? a.spending ?? a.weekly ?? a.outflow ?? null;
+    const tr =
+      weeklyOutflowData?.weeks ??
+      weeklyOutflowData?.weeklyOutflow ??
+      weeklyOutflowData?.outflow ??
+      weeklyOutflowData?.data?.weeks ??
+      weeklyOutflowData?.data ??
+      weeklyOutflowData?.trend ??
+      weeklyOutflowData?.spending ??
+      (Array.isArray(weeklyOutflowData) ? weeklyOutflowData : null);
+
     if (Array.isArray(tr) && tr.length) {
-      tCats = tr.map((p) => p.label ?? p.week ?? p.name ?? "");
-      tSpent = tr.map((p) => Number(p.spent ?? p.amount ?? p.value ?? 0));
-      tTarget = tr.map((p) => Number(p.target ?? p.budget ?? 0));
+      tCats = tr.map((p) => p.label ?? (p.week != null ? `Week ${p.week}` : p.name ?? ""));
+      tSpent = tr.map((p) => Number(p.totalSpent ?? p.spent ?? p.actualSpent ?? p.total ?? p.amount ?? p.value ?? 0));
     } else if (expenses.length) {
-      // Last 6 months of outflow from real records.
+      // Fallback: Last 6 months of outflow from real records
       const byMonth = {};
       expenses.forEach((e) => {
         const d = new Date(e.date);
@@ -266,26 +350,31 @@ export default function Expenses() {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         tCats.push(d.toLocaleString("en-US", { month: "short" }));
         tSpent.push(byMonth[key] || 0);
-        tTarget.push(Math.round(monthlyBudgetLimit));
       }
     }
 
-    // Category donut
+    // 2. Spending Distribution Category Donut
     let dItems = [];
-    const dr = a.byCategory ?? a.categoryShare ?? a.distribution ?? a.categories ?? null;
-    if (Array.isArray(dr) && dr.length) {
-      const raw = dr.map((it) => ({
-        name: it.name ?? it.label ?? it.category ?? "Other",
-        value: Number(it.value ?? it.percentage ?? it.amount ?? 0),
-        color: it.color,
-      }));
-      const sum = raw.reduce((x, y) => x + y.value, 0);
-      const asPct = sum > 100 || sum === 0;
-      dItems = raw.map((it, i) => ({
-        name: it.name,
-        value: asPct && sum ? Math.round((it.value / sum) * 100) : Math.round(it.value),
-        color: it.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
-      }));
+    const distCats =
+      distributionData?.categories ??
+      distributionData?.spendingDistribution?.categories ??
+      distributionData?.spendingDistribution ??
+      distributionData?.byCategory ??
+      distributionData?.categoryShare ??
+      (Array.isArray(distributionData) ? distributionData : null);
+
+    if (Array.isArray(distCats) && distCats.length) {
+      dItems = distCats.map((it, i) => {
+        const catName = it.category ?? it.name ?? it.label ?? "Other";
+        const catMeta = getCategoryMeta(catName, "expense");
+        return {
+          name: catName,
+          value: Number(it.percentage ?? it.total ?? it.value ?? 0),
+          amount: Number(it.total ?? it.amount ?? 0),
+          count: it.count,
+          color: catMeta?.color ?? it.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
+        };
+      });
     } else if (expenses.length) {
       const catMap = {};
       expenses.forEach((e) => {
@@ -296,17 +385,22 @@ export default function Expenses() {
         .sort((x, y) => y[1] - x[1])
         .map(([name, amount], i) => {
           const cat = getCategoryMeta(name, "expense");
-          return { name, value: Math.round((amount / total) * 100), color: cat?.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length] };
+          return {
+            name,
+            value: Math.round((amount / total) * 100),
+            amount,
+            color: cat?.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
+          };
         });
     }
 
-    return { trendCats: tCats, trendSpent: tSpent, trendTarget: tTarget, donutItems: dItems };
-  }, [analyticsData, expenses, monthlyBudgetLimit]);
+    return { trendCats: tCats, trendSpent: tSpent, donutItems: dItems };
+  }, [weeklyOutflowData, distributionData, expenses, getCategoryMeta]);
 
   const donutLabels = donutItems.map((d) => d.name);
   const donutColors = donutItems.map((d) => d.color);
 
-  // ApexChart: Spending Trend vs Budget
+  // ApexChart: Spending Trend / Weekly Outflow
   const spendingTrendOptions = {
     chart: {
       type: "bar",
@@ -323,7 +417,7 @@ export default function Expenses() {
         borderRadiusApplication: "end",
       },
     },
-    colors: ["#ef4444", "#cbd5e1"],
+    colors: ["#ef4444"],
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ["transparent"] },
     xaxis: {
@@ -336,7 +430,7 @@ export default function Expenses() {
       min: 0,
       forceNiceScale: true,
       labels: {
-        formatter: (val) => (val >= 1000 ? `₹${(val / 1000).toFixed(val % 1000 ? 1 : 0)}k` : `₹${Math.round(val)}`),
+        formatter: (val) => (val >= 1000 ? `${currencySymbol}${(val / 1000).toFixed(val % 1000 ? 1 : 0)}k` : `${currencySymbol}${Math.round(val)}`),
         style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 },
       },
     },
@@ -348,32 +442,47 @@ export default function Expenses() {
     legend: { show: false },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `₹${val.toLocaleString("en-IN")}` },
+      y: { formatter: (val) => `${currencySymbol}${Number(val || 0).toLocaleString("en-IN")}` },
     },
   };
 
   const spendingTrendSeries = [
-    { name: "Spent Outflow", data: trendSpent },
-    { name: "Budget Target", data: trendTarget },
+    { name: "Outflow", data: trendSpent },
   ];
 
   // ApexChart: Expense Distribution Donut
   const donutOptions = {
     chart: { type: "donut", height: 210, fontFamily: "inherit" },
     labels: donutLabels,
-    colors: donutColors,
+    colors: donutColors.length ? donutColors : ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
     dataLabels: {
-      enabled: true,
-      formatter: (val) => `${Math.round(val)}%`,
-      style: { fontSize: "11px", fontWeight: "700", colors: ["#ffffff"] },
-      dropShadow: { enabled: false },
+      enabled: false,
     },
-    plotOptions: { pie: { donut: { size: "65%" } } },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "72%",
+          labels: {
+            show: true,
+            name: { show: true, fontSize: "11px", fontWeight: 600, color: "#64748b", offsetY: -4 },
+            value: { show: true, fontSize: "16px", fontWeight: 800, color: "#0f172a", offsetY: 4, formatter: (val) => `${val}%` },
+            total: {
+              show: true,
+              label: "Total",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              color: "#64748b",
+              formatter: () => "100%",
+            },
+          },
+        },
+      },
+    },
     legend: { show: false },
     stroke: { width: 2, colors: ["#ffffff"] },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `${val}% (₹${((val / 100) * cards.total).toFixed(0)})` },
+      y: { formatter: (val) => `${val}% (${currencySymbol}${((val / 100) * cards.total).toFixed(0)})` },
     },
   };
 
@@ -525,60 +634,17 @@ export default function Expenses() {
       },
     },
     {
-      name: "Account / Method",
-      selector: (row) => row.account,
-      sortable: true,
-      minWidth: "160px",
-      cell: (row) => (
-        <div className="d-flex align-items-center gap-1 fs-12px">
-          {row.account.includes("HDFC") || row.account.includes("ICICI") ? (
-            <BsBank2 className="text-primary me-1" size={12} />
-          ) : row.account.includes("GPay") ? (
-            <SiGooglepay className="text-info me-1" size={13} />
-          ) : row.account.includes("PhonePe") ? (
-            <SiPhonepe className="text-primary me-1" size={13} />
-          ) : (
-            <IoWalletOutline className="text-secondary me-1" size={13} />
-          )}
-          <span className="text-dark fw-500">{row.account}</span>
-        </div>
-      ),
-    },
-    {
-      name: "Date & Time",
+      name: "Date",
       selector: (row) => row.date,
       sortable: true,
       width: "140px",
       cell: (row) => (
-        <div>
-          <div className="fw-600 text-dark fs-11.5px">
-            {new Date(row.date).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </div>
-          <div className="text-muted fs-10.5px">{row.time}</div>
-        </div>
-      ),
-    },
-    {
-      name: "Status",
-      selector: (row) => row.status,
-      sortable: true,
-      width: "110px",
-      cell: (row) => (
-        <span
-          className={`ur-status-pill ${
-            row.status === "Paid" ? "success" : "warning"
-          }`}
-        >
-          {row.status === "Paid" ? (
-            <FiCheckCircle size={10} className="me-1" />
-          ) : (
-            <FiClock size={10} className="me-1" />
-          )}
-          {row.status}
+        <span className="fw-600 text-dark fs-11.5px">
+          {new Date(row.date).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
         </span>
       ),
     },
@@ -591,7 +657,7 @@ export default function Expenses() {
       cell: (row) => (
         <div className="text-end">
           <div className="fw-800 text-danger fs-13px">
-            -₹{Number(row.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            -{currencySymbol}{Number(row.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </div>
           {row.receipt && (
             <span className="text-muted fs-10px d-flex align-items-center justify-content-end gap-1">
@@ -657,7 +723,17 @@ export default function Expenses() {
           </p>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <MonthYearFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            selectedDate={selectedDate}
+            selectedMode={selectedMode}
+            onChangeMonth={setSelectedMonth}
+            onChangeYear={setSelectedYear}
+            onChangeDate={setSelectedDate}
+            onChangeMode={setSelectedMode}
+          />
           <Button className="ms-btn-expense" onClick={handleOpenAdd}>
             <FiPlus size={14} />
             <span>Add New Expense</span>
@@ -666,7 +742,7 @@ export default function Expenses() {
       </div>
 
       {/* ===================================================================
-          2. TOP 4 METRICS CARDS
+          2. TOP 3 METRICS CARDS (Powered by /expenses/analytics)
           =================================================================== */}
       <Row className="g-3 mb-3">
         <Col xs={12} sm={6} xl={4}>
@@ -674,9 +750,11 @@ export default function Expenses() {
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <div className="ms-stat-title">Total Outflow (Month)</div>
+                  <div className="ms-stat-title">
+                    Total Outflow ({selectedMode === "date" ? "Day" : "Month"})
+                  </div>
                   <div className="ms-stat-val text-danger">
-                    ₹{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {currencySymbol}{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#fff1f2" }}>
@@ -685,9 +763,11 @@ export default function Expenses() {
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="ms-trend-pill negative">
-                  <FiTrendingDown size={11} /> -3.8%
+                  <FiTrendingDown size={11} /> Outflow
                 </span>
-                <span className="ms-stat-sub-text">lower than budget pace</span>
+                <span className="ms-stat-sub-text">
+                  {cards.totalEntries} {cards.totalEntries === 1 ? "entry" : "entries"} recorded
+                </span>
               </div>
             </Card.Body>
           </Card>
@@ -700,7 +780,7 @@ export default function Expenses() {
                 <div>
                   <div className="ms-stat-title">Daily Average Spend</div>
                   <div className="ms-stat-val">
-                    ₹{cards.dailyAvg.toLocaleString("en-IN")}
+                    {currencySymbol}{cards.dailyAvg.toLocaleString("en-IN")}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#f5f3ff" }}>
@@ -708,8 +788,8 @@ export default function Expenses() {
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="text-dark fw-700 fs-11px">₹1,800 Target</span>
-                <span className="ms-stat-sub-text">Under target by ₹190</span>
+                <span className="text-dark fw-700 fs-11px">{currencySymbol}{cards.dailyAvg.toLocaleString("en-IN")}/day</span>
+                <span className="ms-stat-sub-text">Calculated average</span>
               </div>
             </Card.Body>
           </Card>
@@ -725,15 +805,15 @@ export default function Expenses() {
                     {cards.topCat}
                   </div>
                 </div>
-                <div className="ms-stat-icon-box" style={{ backgroundColor: "#eef2ff" }}>
-                  <FiHome size={19} color="#4f46e5" />
+                <div className="ms-stat-icon-box" style={{ backgroundColor: largestCatMeta?.bg || "#eef2ff" }}>
+                  {largestCatMeta?.icon || <FiHome size={19} color="#4f46e5" />}
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-danger fw-700 fs-11px">
-                  ₹{cards.maxVal.toLocaleString("en-IN")}
+                  {currencySymbol}{cards.maxVal.toLocaleString("en-IN")}
                 </span>
-                <span className="ms-stat-sub-text">Housing &amp; Leases</span>
+                <span className="ms-stat-sub-text">Top spending area</span>
               </div>
             </Card.Body>
           </Card>
@@ -750,17 +830,15 @@ export default function Expenses() {
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <div>
-                  <h5 className="ms-card-title mb-0">Weekly Outflow vs Target Limit</h5>
-                  <p className="text-muted fs-11px mb-0">Expense pacing across August 2026</p>
+                  <h5 className="ms-card-title mb-0">Weekly Outflow</h5>
+                  <p className="text-muted fs-11px mb-0">
+                    Expense pacing across {selectedMode === "date" && selectedDate ? selectedDate : `${selectedMonthName} ${selectedYear}`}
+                  </p>
                 </div>
-                <div className="d-flex align-items-center gap-3 fs-11px">
+                <div className="d-flex align-items-center gap-2 fs-11px">
                   <span className="d-flex align-items-center gap-1">
                     <span className="ms-legend-square" style={{ backgroundColor: "#ef4444" }}></span>
-                    <span className="fw-600 text-dark">Actual Spent</span>
-                  </span>
-                  <span className="d-flex align-items-center gap-1">
-                    <span className="ms-legend-square" style={{ backgroundColor: "#cbd5e1" }}></span>
-                    <span className="fw-600 text-dark">Target Limit</span>
+                    <span className="fw-600 text-dark">Outflow</span>
                   </span>
                 </div>
               </div>
@@ -788,25 +866,29 @@ export default function Expenses() {
               </div>
 
               {donutSeries.length ? (
-                <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 my-auto py-2">
-                  <div style={{ width: "180px", height: "200px" }}>
-                    <Chart options={donutOptions} series={donutSeries} type="donut" height={200} />
-                  </div>
+                <Row className="align-items-center g-3 my-auto py-1">
+                  <Col xs={12} sm={6} className="d-flex justify-content-center">
+                    <div style={{ width: "170px", height: "185px" }}>
+                      <Chart options={donutOptions} series={donutSeries} type="donut" height={185} />
+                    </div>
+                  </Col>
 
-                  <div className="ms-donut-legend ps-2" style={{ minWidth: "150px" }}>
-                    {donutItems.map((item, i) => (
-                      <div key={i} className="d-flex align-items-center justify-content-between mb-1 fs-11px">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
-                          <span className="text-dark fw-600">{item.name}</span>
+                  <Col xs={12} sm={6}>
+                    <div className="d-flex flex-column gap-1.5" style={{ maxHeight: "175px", overflowY: "auto" }}>
+                      {donutItems.map((item, i) => (
+                        <div key={i} className="ms-donut-legend-card fs-11px">
+                          <div className="d-flex align-items-center gap-2 text-truncate me-2">
+                            <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
+                            <span className="text-dark fw-600 text-truncate">{item.name}</span>
+                          </div>
+                          <span className="fw-700 text-dark flex-shrink-0">{item.value}%</span>
                         </div>
-                        <span className="fw-700 text-dark">{item.value}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ))}
+                    </div>
+                  </Col>
+                </Row>
               ) : (
-                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 200 }}>
+                <div className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-2" style={{ minHeight: 185 }}>
                   No expense data to chart yet.
                 </div>
               )}
@@ -824,7 +906,7 @@ export default function Expenses() {
         keyField="id"
         loading={expensesLoading}
         title="All Expense Logs"
-        subtitle={`${periodOptions.find((p) => p.value === selectedPeriod)?.label || "This Month"} • ${totalCount} expense log(s)`}
+        subtitle={`${selectedMonthName} ${selectedYear} • ${totalCount} expense log(s)`}
         searchPlaceholder="Search by merchant, note, or reference..."
         selectableRows={true}
         initialSortField="date"
@@ -841,18 +923,6 @@ export default function Expenses() {
         exportFileName="Expense_Statements"
         filters={
           <div className="ur-inline-filters">
-            {/* Period Filter — GET /expenses?month=&year= | ?all=true | (default current month) */}
-            <Select
-              value={periodOptions.find((p) => p.value === selectedPeriod)}
-              onChange={(opt) => {
-                setSelectedPeriod(opt ? opt.value : "current");
-                setPage(1);
-              }}
-              options={periodOptions}
-              styles={filterSelectStyles}
-              isSearchable={false}
-            />
-
             {/* Category Filter */}
             <Select
               value={[
@@ -924,7 +994,7 @@ export default function Expenses() {
 
               <Col xs={12}>
                 <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+                  <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
                   <Form.Control
                     type="number"
                     required
@@ -941,11 +1011,9 @@ export default function Expenses() {
               <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
-                  <Form.Control
-                    type="date"
+                  <AppDatePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="ur-form-input"
+                    onChange={(dateStr) => setFormData({ ...formData, date: dateStr })}
                   />
                 </Form.Group>
               </Col>
@@ -1025,7 +1093,7 @@ export default function Expenses() {
 
               <Col xs={12}>
                 <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+                  <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
                   <Form.Control
                     type="number"
                     required
@@ -1041,11 +1109,9 @@ export default function Expenses() {
               <Col xs={12}>
                 <Form.Group className="mb-2">
                   <Form.Label className="ur-form-label">Date</Form.Label>
-                  <Form.Control
-                    type="date"
+                  <AppDatePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="ur-form-input"
+                    onChange={(dateStr) => setFormData({ ...formData, date: dateStr })}
                   />
                 </Form.Group>
               </Col>
@@ -1087,7 +1153,7 @@ export default function Expenses() {
           </div>
           <h5 className="fw-700 text-dark mb-1">Delete Expense Record?</h5>
           <p className="text-muted fs-12px mb-3">
-            Are you sure you want to delete <strong>{activeExpense?.merchant}</strong> (-₹{activeExpense?.amount?.toLocaleString("en-IN")})? This action cannot be undone.
+            Are you sure you want to delete <strong>{activeExpense?.merchant}</strong> (-{currencySymbol}{activeExpense?.amount?.toLocaleString()})? This action cannot be undone.
           </p>
           <div className="d-flex justify-content-center gap-2">
             <Button variant="light" size="sm" onClick={() => setShowDeleteModal(false)} className="rounded-6px px-3">
@@ -1116,7 +1182,7 @@ export default function Expenses() {
               <div className="ur-details-highlight-card expense p-3 rounded-10px mb-3 text-center">
                 <span className="text-muted fs-11px">TOTAL AMOUNT DEBITED</span>
                 <div className="fw-800 text-danger fs-24px my-1">
-                  -₹{Number(activeExpense.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  -{currencySymbol}{Number(activeExpense.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
                 <Badge bg="danger-subtle" className="text-danger fs-11px px-2 py-1 rounded-6px">
                   Status: {activeExpense.status}
@@ -1142,9 +1208,9 @@ export default function Expenses() {
                   <span className="fw-600 text-dark">{activeExpense.account}</span>
                 </div>
                 <div className="d-flex justify-content-between py-1 border-bottom">
-                  <span className="text-muted">Date &amp; Timestamp:</span>
+                  <span className="text-muted">Date:</span>
                   <span className="fw-600 text-dark">
-                    {activeExpense.date} at {activeExpense.time}
+                    {activeExpense.date}
                   </span>
                 </div>
                 <div className="d-flex justify-content-between py-1 border-bottom">

@@ -3,19 +3,14 @@ import { Link, useLocation } from "react-router-dom";
 import Nav from "react-bootstrap/Nav";
 import {
   FiGrid,
-  FiArrowUp,
-  FiArrowDown,
-  FiRepeat,
+  FiArrowUpRight,
+  FiArrowDownLeft,
   FiPieChart,
-  FiTarget,
-  FiUsers,
-  FiCreditCard,
-  FiCalendar,
-  FiFileText,
-  FiBell,
   FiSettings,
+  FiUser,
   FiX,
   FiLogOut,
+  FiTrendingUp,
 } from "react-icons/fi";
 import { IoWalletOutline } from "react-icons/io5";
 import { useAuth } from "../../context/AuthContext";
@@ -28,20 +23,16 @@ export default function Sidebar({ isOpen, onClose }) {
   const displayEmail = email || user?.email || "";
   const avatarInitial = (displayName ? displayName[0] : (displayEmail ? displayEmail[0] : "U")).toUpperCase();
 
+  const mainNavItems = [
+    { name: "Dashboard", icon: <FiGrid size={17} />, path: "/dashboard" },
+    { name: "Income", icon: <FiArrowUpRight size={17} />, path: "/income" },
+    { name: "Expenses", icon: <FiArrowDownLeft size={17} />, path: "/expenses" },
+    { name: "Budgets", icon: <FiPieChart size={17} />, path: "/budgets" },
+  ];
 
-  const navItems = [
-    { name: "Dashboard", icon: <FiGrid size={18} />, path: "/dashboard" },
-    { name: "Income", icon: <FiArrowUp size={18} />, path: "/income" },
-    { name: "Expenses", icon: <FiArrowDown size={18} />, path: "/expenses" },
-    // { name: "Transactions", icon: <FiRepeat size={18} />, path: "/transactions" },
-    { name: "Budgets", icon: <FiPieChart size={18} />, path: "/budgets" },
-    // { name: "Savings Goals", icon: <FiTarget size={18} />, path: "/goals" },
-    // { name: "Groups & Split", icon: <FiUsers size={18} />, path: "/split" },
-    // { name: "EMI / Loans", icon: <FiCreditCard size={18} />, path: "/emi" },
-    // { name: "Calendar", icon: <FiCalendar size={18} />, path: "/calendar" },
-    // { name: "Reports", icon: <FiFileText size={18} />, path: "/reports" },
-    // { name: "Notifications", icon: <FiBell size={18} />, path: "/notifications" },
-    { name: "Settings", icon: <FiSettings size={18} />, path: "/settings" },
+  const secondaryNavItems = [
+    { name: "Profile", icon: <FiUser size={17} />, path: "/profile" },
+    { name: "Settings", icon: <FiSettings size={17} />, path: "/settings" },
   ];
 
   return (
@@ -49,28 +40,50 @@ export default function Sidebar({ isOpen, onClose }) {
       <div className="ur-sidebar-top">
         {/* Brand Logo + Mobile Close Button */}
         <div className="ur-sidebar-header">
-          <Link to="/dashboard" className="ur-brand-logo">
+          <Link to="/dashboard" className="ur-brand-logo" onClick={onClose}>
             <div className="ur-brand-icon">
               <IoWalletOutline size={22} />
             </div>
-            <span className="ur-brand-name">
-              Wal<span>trio</span>
-            </span>
+            <div className="d-flex align-items-center">
+              <span className="ur-brand-name">Wal<span>trio</span></span>
+              <span className="ur-brand-badge">SaaS</span>
+            </div>
           </Link>
 
-          {/* Close Button - visible only on mobile/tablet */}
+          {/* Close Button - visible only on mobile */}
           <button
             className="ur-sidebar-close-btn"
             onClick={onClose}
             aria-label="Close sidebar"
           >
-            <FiX size={20} />
+            <FiX size={18} />
           </button>
         </div>
 
-        {/* Navigation List */}
+        {/* Main Navigation Section */}
+        <div className="ur-nav-section-title">Main Navigation</div>
         <Nav className="flex-column ur-nav-list">
-          {navItems.map((item, idx) => {
+          {mainNavItems.map((item, idx) => {
+            const isActive = item.path === location.pathname;
+            return (
+              <Nav.Item key={idx}>
+                <Link
+                  to={item.path}
+                  className={`ur-nav-item ${isActive ? "active" : ""}`}
+                  onClick={onClose}
+                >
+                  <span className="ur-nav-icon">{item.icon}</span>
+                  <span className="ur-nav-text">{item.name}</span>
+                </Link>
+              </Nav.Item>
+            );
+          })}
+        </Nav>
+
+        {/* Preferences Section */}
+        <div className="ur-nav-section-title mt-3">Preferences</div>
+        <Nav className="flex-column ur-nav-list">
+          {secondaryNavItems.map((item, idx) => {
             const isActive = item.path === location.pathname;
             return (
               <Nav.Item key={idx}>
@@ -89,39 +102,34 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       {/* Sidebar Footer: User Avatar + Name + Logout Icon Button */}
-      <div className="ur-sidebar-footer p-3 border-top mt-auto">
-        <div className="d-flex align-items-center justify-content-between">
-          <div className="d-flex align-items-center gap-2 overflow-hidden me-2">
-            <div
-              style={{
-                width: "34px",
-                height: "34px",
-                minWidth: "34px",
-                borderRadius: "50%",
-                backgroundColor: "#4f46e5",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "700",
-                fontSize: "13px",
-              }}
-            >
+      <div className="ur-sidebar-footer">
+        <div className="ur-user-profile-card">
+          <Link
+            to="/profile"
+            onClick={onClose}
+            className="d-flex align-items-center gap-2 overflow-hidden me-2 text-decoration-none"
+            style={{ cursor: "pointer" }}
+          >
+            <div className="ur-user-avatar-mini">
               {avatarInitial}
             </div>
-            <div className="d-flex flex-column text-truncate" style={{ lineHeight: "1.15" }}>
-              <span className="fw-700 text-dark fs-12.5px text-truncate">{displayName}</span>
-              <span className="text-muted fs-10.5px text-truncate">{displayEmail}</span>
+            <div className="d-flex flex-column text-truncate" style={{ lineHeight: "1.2" }}>
+              <span className="fw-700 text-dark fs-12px text-truncate">{displayName}</span>
+              <span className="text-muted fs-10.5px text-truncate">{displayEmail || "Personal Account"}</span>
             </div>
-          </div>
+          </Link>
           <button
             type="button"
-            onClick={logout}
-            className="btn btn-light btn-sm p-1 rounded-6px text-danger border-0"
-            title="Log Out"
-            style={{ width: "30px", height: "30px", minWidth: "30px", display: "flex", alignItems: "center", justifyContent: "center" }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logout();
+            }}
+            className="ur-sidebar-logout-btn"
+            title="Sign Out"
+            aria-label="Sign Out"
           >
-            <FiLogOut size={16} />
+            <FiLogOut size={14} />
           </button>
         </div>
       </div>
