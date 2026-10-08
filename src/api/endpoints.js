@@ -9,22 +9,23 @@ export const ENDPOINTS = {
     verifyOtp: "/auth/verify-otp",
     forgotPassword: "/auth/forgot-password",
     forgotPasswordVerifyOtp: "/auth/forgot-password/verify-otp",
-    forgotPasswordReset: "/auth/forgot-password/reset",
-    me: "/auth/me",
     profile: "/auth/profile",
   },
+  profile: "/auth/profile",
 
   incomes: {
     list: "/incomes",
     summary: "/incomes/summary",
-    analytics: "/incomes/analytics",
+    velocity: "/incomes/velocity",
+    revenueShare: "/incomes/revenue-share",
     create: "/incomes",
     byId: (id) => `/incomes/${id}`,
   },
   expenses: {
     list: "/expenses",
     summary: "/expenses/summary",
-    analytics: "/expenses/analytics",
+    spendingDistribution: "/expenses/spending-distribution",
+    weeklyOutflow: "/expenses/weekly-outflow",
     create: "/expenses",
     byId: (id) => `/expenses/${id}`,
   },
@@ -36,6 +37,7 @@ export const ENDPOINTS = {
     // Whole budgets page (cards + chart + caps). POST/PUT here upsert a cap.
     category: "/budget/category",
     categoryById: (id) => `/budget/category/${id}`,
+    copyNextMonth: "/budget/category/copy-next-month",
   },
   categories: {
     income: "/categories/income",

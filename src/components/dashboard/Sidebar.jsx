@@ -7,6 +7,7 @@ import {
   FiArrowDownLeft,
   FiPieChart,
   FiSettings,
+  FiUser,
   FiX,
   FiLogOut,
   FiTrendingUp,
@@ -30,6 +31,7 @@ export default function Sidebar({ isOpen, onClose }) {
   ];
 
   const secondaryNavItems = [
+    { name: "Profile", icon: <FiUser size={17} />, path: "/profile" },
     { name: "Settings", icon: <FiSettings size={17} />, path: "/settings" },
   ];
 
@@ -102,7 +104,12 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* Sidebar Footer: User Avatar + Name + Logout Icon Button */}
       <div className="ur-sidebar-footer">
         <div className="ur-user-profile-card">
-          <div className="d-flex align-items-center gap-2 overflow-hidden me-2">
+          <Link
+            to="/profile"
+            onClick={onClose}
+            className="d-flex align-items-center gap-2 overflow-hidden me-2 text-decoration-none"
+            style={{ cursor: "pointer" }}
+          >
             <div className="ur-user-avatar-mini">
               {avatarInitial}
             </div>
@@ -110,12 +117,17 @@ export default function Sidebar({ isOpen, onClose }) {
               <span className="fw-700 text-dark fs-12px text-truncate">{displayName}</span>
               <span className="text-muted fs-10.5px text-truncate">{displayEmail || "Personal Account"}</span>
             </div>
-          </div>
+          </Link>
           <button
             type="button"
-            onClick={logout}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logout();
+            }}
             className="ur-sidebar-logout-btn"
             title="Sign Out"
+            aria-label="Sign Out"
           >
             <FiLogOut size={14} />
           </button>

@@ -59,6 +59,33 @@
     height: 58px;
   }
 
+  /* Mobile Header: Brand on left, Hamburger on right */
+  .ur-header-mobile-brand {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ur-header-mobile-brand .ur-brand-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .ur-header-mobile-brand .ur-brand-name {
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .ur-header-mobile-brand .ur-brand-badge {
+    font-size: 8.5px;
+    padding: 1.5px 5px;
+  }
+
+  .ur-header-desktop-breadcrumb {
+    display: none !important;
+  }
+
   /* Hide breadcrumb text on mobile to save space */
   .ur-breadcrumb-text {
     display: none;
@@ -143,6 +170,16 @@
   .ur-top-header {
     padding: 0 12px;
     height: 52px;
+  }
+
+  .ur-header-mobile-brand .ur-brand-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+  }
+
+  .ur-header-mobile-brand .ur-brand-name {
+    font-size: 15px;
   }
 
   .ur-header-actions {

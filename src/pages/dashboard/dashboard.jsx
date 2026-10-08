@@ -26,11 +26,10 @@ import {
   FiZap,
 } from "react-icons/fi";
 import { IoWalletOutline } from "react-icons/io5";
-import { FaPiggyBank } from "react-icons/fa";
 import { useDashboardYearSummary, useDashboardAnalyticsYear } from "../../hooks/useDashboard";
 import { useBudgetCategories } from "../../hooks/useBudgets";
 import { useCreateIncome } from "../../hooks/useIncomes";
-import { useCreateExpense } from "../../hooks/useExpenses";
+import { useCreateExpense, useExpenseSpendingDistribution } from "../../hooks/useExpenses";
 import { formSelectStyles } from "../../utils/selectStyles";
 import { toast } from "../../lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,10 +39,6 @@ import MonthYearFilter, { MONTHS } from "../../components/common/MonthYearFilter
 import AppDatePicker from "../../components/common/AppDatePicker";
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-const fmtCurrency = (n) =>
-  `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
-const fmtPct = (v) => `${Number(v) >= 0 ? "+" : ""}${Number(v || 0)}%`;
 
 const BUDGET_CAT_META = {
   "Food & Dining": { icon: <FiCoffee size={14} />, color: "#8b5cf6", bg: "#f5f3ff", gradient: "linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%)" },
@@ -60,9 +55,12 @@ const DEFAULT_BUDGET_META = { icon: <FiTarget size={14} />, color: "#4f46e5", bg
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { name, user } = useAuth();
-  const { incomeCategories, expenseCategories } = useCategories();
+  const { name, user, currencySymbol, formatAmount } = useAuth();
+  const { incomeCategories, expenseCategories, getCategoryMeta } = useCategories();
   const firstName = (name || user?.name || "User").split(" ")[0];
+
+  const fmtCurrency = (n) => formatAmount(n);
+  const fmtPct = (v) => `${Number(v) >= 0 ? "+" : ""}${Number(v || 0)}%`;
 
   // Dynamic greeting based on current hour
   const timeGreeting = useMemo(() => {
@@ -189,6 +187,7 @@ export default function Dashboard() {
 
   const { data: summaryData } = useDashboardYearSummary(summaryParams);
   const { data: analyticsData } = useDashboardAnalyticsYear(analyticsParams);
+  const { data: distributionData, isLoading: distributionLoading } = useExpenseSpendingDistribution(summaryParams);
 
   const totalBalance = summaryData?.totalBalance ?? 0;
   const income = summaryData?.totalIncome || {};
@@ -196,7 +195,29 @@ export default function Dashboard() {
   const savings = summaryData?.totalSavings || {};
   const budget = summaryData?.budgetOverview || {};
 
-  const { data: budgetCaps } = useBudgetCategories();
+  // Budget query params for GET /v1/api/budget/category (only month and year, no day filter)
+  const budgetParams = useMemo(() => {
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 3) {
+        return {
+          month: parts[1],
+          year: parts[0],
+        };
+      }
+    }
+    if (selectedMode === "year") {
+      return {
+        year: Number(selectedYear),
+      };
+    }
+    return {
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
+
+  const { data: budgetCaps } = useBudgetCategories(budgetParams);
   const categoryAllocations = useMemo(() => {
     const caps = Array.isArray(budgetCaps) ? budgetCaps : [];
     return caps.map((cap) => {
@@ -267,15 +288,6 @@ export default function Dashboard() {
       iconBg: "#fff1f2",
       sub: `${Number(expense.budgetUsedPercentage ?? 0)}% of budget used`,
     },
-    {
-      title: "Total Savings",
-      value: fmtCurrency(savings.amount),
-      change: fmtPct(savings.change),
-      isPositive: Number(savings.change ?? 0) >= 0,
-      icon: <FaPiggyBank size={18} color="#4f46e5" />,
-      iconBg: "#eef2ff",
-      sub: `${Number(savings.netSavingsRate ?? 0)}% net savings rate`,
-    },
   ];
 
   // Bar Chart Data
@@ -290,7 +302,7 @@ export default function Dashboard() {
   const barChartOptions = {
     chart: {
       type: "bar",
-      height: 260,
+      height: 220,
       toolbar: { show: false },
       fontFamily: "inherit",
       parentHeightOffset: 0,
@@ -331,7 +343,7 @@ export default function Dashboard() {
     legend: { show: false },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `₹${val.toLocaleString("en-IN")}` },
+      y: { formatter: (val) => `${currencySymbol}${Number(val || 0).toLocaleString("en-IN")}` },
     },
   };
 
@@ -339,6 +351,99 @@ export default function Dashboard() {
     { name: "Income", data: barIncome },
     { name: "Expenses", data: barExpenses },
   ];
+
+  // Spending Distribution (Expense Most Categories List) from /expenses/spending-distribution
+  const EXP_DONUT_COLORS = [
+    "#f59e0b",
+    "#6366f1",
+    "#10b981",
+    "#ef4444",
+    "#8b5cf6",
+    "#06b6d4",
+    "#ec4899",
+    "#d97706",
+  ];
+
+  const donutItems = useMemo(() => {
+    const distCats =
+      distributionData?.categories ??
+      distributionData?.spendingDistribution?.categories ??
+      distributionData?.spendingDistribution ??
+      distributionData?.data?.categories ??
+      (Array.isArray(distributionData) ? distributionData : null);
+
+    if (Array.isArray(distCats) && distCats.length) {
+      return distCats.map((it, i) => {
+        const catName = it.category ?? it.name ?? it.label ?? "Other";
+        const catMeta = getCategoryMeta ? getCategoryMeta(catName, "expense") : null;
+        const rawPct = it.percentage != null ? Number(it.percentage) : Number(it.total ?? 0);
+        const displayPct =
+          it.percentage != null
+            ? `${Number(it.percentage).toFixed(Number(it.percentage) % 1 !== 0 ? 2 : 0)}%`
+            : `${rawPct}%`;
+        return {
+          name: catName,
+          value: Number(rawPct.toFixed(2)),
+          displayPct,
+          amount: Number(it.total ?? it.amount ?? 0),
+          count: it.count,
+          color: catMeta?.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
+        };
+      });
+    }
+    return [];
+  }, [distributionData, getCategoryMeta]);
+
+  const donutLabels = donutItems.map((d) => d.name);
+  const donutColors = donutItems.map((d) => d.color);
+  const donutSeries = donutItems.map((d) => d.value);
+
+  const donutOptions = {
+    chart: { type: "donut", height: 185, fontFamily: "inherit" },
+    labels: donutLabels,
+    colors: donutColors.length ? donutColors : EXP_DONUT_COLORS,
+    dataLabels: { enabled: false },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "72%",
+          labels: {
+            show: true,
+            name: { show: true, fontSize: "11px", fontWeight: 600, color: "#64748b", offsetY: -4 },
+            value: {
+              show: true,
+              fontSize: "16px",
+              fontWeight: 800,
+              color: "#0f172a",
+              offsetY: 4,
+              formatter: (val) => `${val}%`,
+            },
+            total: {
+              show: true,
+              label: "Total",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              color: "#64748b",
+              formatter: () => "100%",
+            },
+          },
+        },
+      },
+    },
+    legend: { show: false },
+    stroke: { width: 2, colors: ["#ffffff"] },
+    tooltip: {
+      theme: "light",
+      y: {
+        formatter: (val, opts) => {
+          const item = donutItems[opts?.seriesIndex];
+          return item?.amount
+            ? `${val}% (${currencySymbol}${Number(item.amount).toLocaleString()})`
+            : `${val}%`;
+        },
+      },
+    },
+  };
 
   // Savings Goals
   const GOAL_GRADIENTS = [
@@ -361,7 +466,7 @@ export default function Dashboard() {
       gradient: GOAL_GRADIENTS[i % GOAL_GRADIENTS.length],
       badgeColor: "#4f46e5",
       badgeBg: "#eef2ff",
-      remainingText: `₹${Math.max(target - saved, 0).toLocaleString("en-IN")} left`,
+      remainingText: `${currencySymbol}${Math.max(target - saved, 0).toLocaleString()} left`,
       eta: g.eta ?? g.targetDate ?? "",
     };
   });
@@ -403,10 +508,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 2. TOP 4 STAT CARDS */}
+      {/* 2. TOP 3 STAT CARDS */}
       <Row className="g-3 mb-3">
         {stats.map((stat, idx) => (
-          <Col key={idx} xs={12} sm={6} xl={3}>
+          <Col key={idx} xs={12} sm={6} md={4}>
             <Card className="ms-premium-card h-100 border-0">
               <Card.Body className="p-3 d-flex flex-column justify-content-between">
                 <div className="d-flex justify-content-between align-items-start mb-2">
@@ -443,9 +548,10 @@ export default function Dashboard() {
         ))}
       </Row>
 
-      {/* 3. INCOME VS EXPENSES CHART */}
+      {/* 3. INCOME VS EXPENSES & SPENDING DISTRIBUTION CHARTS */}
       <Row className="g-3 mb-3">
-        <Col xs={12}>
+        {/* Income vs Expenses Chart */}
+        <Col xs={12} lg={7}>
           <Card className="ms-premium-card h-100 border-0">
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div>
@@ -508,14 +614,14 @@ export default function Dashboard() {
                       className="ms-legend-square"
                       style={{ backgroundColor: "#4f46e5", width: "10px", height: "10px", borderRadius: "3px" }}
                     ></span>
-                    <span className="fw-600 text-dark">Income: ₹{Number(iveTotalIncome || 0).toLocaleString("en-IN")}</span>
+                    <span className="fw-600 text-dark">Income: {currencySymbol}{Number(iveTotalIncome || 0).toLocaleString()}</span>
                   </span>
                   <span className="d-flex align-items-center gap-1">
                     <span
                       className="ms-legend-square"
                       style={{ backgroundColor: "#f43f5e", width: "10px", height: "10px", borderRadius: "3px" }}
                     ></span>
-                    <span className="fw-600 text-dark">Expenses: ₹{Number(iveTotalExpenses || 0).toLocaleString("en-IN")}</span>
+                    <span className="fw-600 text-dark">Expenses: {currencySymbol}{Number(iveTotalExpenses || 0).toLocaleString()}</span>
                   </span>
                 </div>
               </div>
@@ -525,9 +631,52 @@ export default function Dashboard() {
                   options={barChartOptions}
                   series={barChartSeries}
                   type="bar"
-                  height={260}
+                  height={220}
                 />
               </div>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Spending Distribution / Expense Most Categories List */}
+        <Col xs={12} lg={5}>
+          <Card className="ms-premium-card h-100 border-0">
+            <Card.Body className="p-3 d-flex flex-column justify-content-between">
+              <div>
+                <h5 className="ms-card-title mb-0">Spending Distribution</h5>
+                <p className="text-muted fs-11.5px mb-0">Category wise consumption</p>
+              </div>
+
+              {donutSeries.length > 0 ? (
+                <Row className="align-items-center g-3 my-auto py-1">
+                  <Col xs={12} sm={6} className="d-flex justify-content-center">
+                    <div style={{ width: "170px", height: "185px" }}>
+                      <Chart options={donutOptions} series={donutSeries} type="donut" height={185} />
+                    </div>
+                  </Col>
+
+                  <Col xs={12} sm={6}>
+                    <div className="d-flex flex-column gap-1.5" style={{ maxHeight: "185px", overflowY: "auto" }}>
+                      {donutItems.map((item, i) => (
+                        <div key={i} className="ms-donut-legend-card fs-11px">
+                          <div className="d-flex align-items-center gap-2 text-truncate me-2">
+                            <span className="ms-legend-dot" style={{ backgroundColor: item.color }}></span>
+                            <span className="text-dark fw-600 text-truncate">{item.name}</span>
+                          </div>
+                          <span className="fw-700 text-dark flex-shrink-0">{item.displayPct}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Col>
+                </Row>
+              ) : (
+                <div
+                  className="d-flex align-items-center justify-content-center text-muted fs-12px my-auto py-4"
+                  style={{ minHeight: 185 }}
+                >
+                  {distributionLoading ? "Loading spending distribution..." : "No expense category data to display."}
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
@@ -557,20 +706,20 @@ export default function Dashboard() {
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <div>
                     <div className="ms-mini-label">Monthly Limit</div>
-                    <div className="ms-budget-main-val">₹{budgetSummary.limit.toLocaleString("en-IN")}</div>
+                    <div className="ms-budget-main-val">{currencySymbol}{budgetSummary.limit.toLocaleString()}</div>
                   </div>
                   <div className="text-center">
                     <div className="ms-mini-label">Spent</div>
-                    <div className="ms-budget-used-val">₹{budgetSummary.spent.toLocaleString("en-IN")}</div>
+                    <div className="ms-budget-used-val">{currencySymbol}{budgetSummary.spent.toLocaleString()}</div>
                   </div>
                   <div className="text-end">
                     <div className="ms-mini-label">Available</div>
-                    <div className="ms-budget-rem-val">₹{budgetSummary.available.toLocaleString("en-IN")}</div>
+                    <div className="ms-budget-rem-val">{currencySymbol}{budgetSummary.available.toLocaleString()}</div>
                   </div>
                 </div>
 
                 <div>
-                  <div className="d-flex justify-content-between mb-1">
+                  <div className="d-flex justify-content-between mb-2">
                     <span className="text-muted fw-600 fs-11px">Budget Consumption</span>
                     <span className="fw-800 text-primary fs-11px">{budgetSummary.pct}%</span>
                   </div>
@@ -601,7 +750,7 @@ export default function Dashboard() {
                   ) : (
                     categoryAllocations.slice(0, 4).map((cat, idx) => (
                       <div className="ms-cat-alloc-card" key={idx}>
-                        <div className="d-flex align-items-center justify-content-between mb-1.5">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
                           <div className="d-flex align-items-center gap-2">
                             <div className="ms-cat-icon-box" style={{ backgroundColor: cat.bg, color: cat.color }}>
                               {cat.icon}
@@ -609,8 +758,8 @@ export default function Dashboard() {
                             <div>
                               <div className="ms-cat-name">{cat.name}</div>
                               <div className="ms-cat-amount-info">
-                                ₹{cat.spent.toLocaleString("en-IN")}{" "}
-                                <span className="text-muted fw-400">/ ₹{cat.allocated.toLocaleString("en-IN")}</span>
+                                {currencySymbol}{cat.spent.toLocaleString()}{" "}
+                                <span className="text-muted fw-400">/ {currencySymbol}{cat.allocated.toLocaleString()}</span>
                               </div>
                             </div>
                           </div>
@@ -634,92 +783,7 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        {/* Savings Goals */}
-        <Col xs={12} lg={6}>
-          <Card className="ms-premium-card h-100 border-0">
-            <Card.Body className="p-3 d-flex flex-column justify-content-between">
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h5 className="ms-card-title mb-0 d-flex align-items-center gap-2">
-                      <FiTarget className="text-primary" /> Savings Goals &amp; Targets
-                    </h5>
-                    <p className="text-muted fs-11.5px mb-0">Progress toward milestone targets</p>
-                  </div>
-                </div>
-
-                {/* Goals Cards List */}
-                <div className="d-flex flex-column gap-2">
-                  {savingsGoals.length === 0 ? (
-                    <div className="text-center text-muted fs-12px py-4 border rounded-8px bg-light">
-                      No savings targets configured.
-                    </div>
-                  ) : (
-                    savingsGoals.map((goal, idx) => (
-                      <div key={idx} className="ms-goal-card p-3 rounded-10px">
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div className="d-flex align-items-center gap-2">
-                            <div
-                              className="ms-goal-icon-box"
-                              style={{ backgroundColor: goal.iconBg }}
-                            >
-                              <span>{goal.icon}</span>
-                            </div>
-                            <div>
-                              <div className="ms-goal-name">{goal.title}</div>
-                              <div className="ms-goal-cat">{goal.category} {goal.eta ? `• Target ${goal.eta}` : ""}</div>
-                            </div>
-                          </div>
-
-                          <div className="text-end">
-                            <span
-                              className="ms-goal-percent-badge"
-                              style={{
-                                backgroundColor: goal.badgeBg,
-                                color: goal.badgeColor,
-                              }}
-                            >
-                              {goal.percent}%
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Goal Numbers */}
-                        <div className="d-flex justify-content-between align-items-center fs-12px mb-1.5">
-                          <span className="fw-700 text-dark">
-                            ₹{goal.saved.toLocaleString("en-IN")}{" "}
-                            <span className="text-muted fw-500">
-                              / ₹{goal.target.toLocaleString("en-IN")}
-                            </span>
-                          </span>
-                          <span className="text-muted fs-11px">{goal.remainingText}</span>
-                        </div>
-
-                        {/* Gradient Custom Progress Bar */}
-                        <div className="ms-goal-track" style={{ height: "7px" }}>
-                          <div
-                            className="ms-goal-fill"
-                            style={{
-                              width: `${Math.min(100, goal.percent)}%`,
-                              background: goal.gradient,
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-3 text-center border-top mt-3">
-                <span className="text-muted fs-12px">
-                  🎯 Total Saved: <strong className="text-dark">₹{totalSaved.toLocaleString("en-IN")}</strong> of ₹{totalTarget.toLocaleString("en-IN")}
-                  {totalTarget ? ` (${Math.round((totalSaved / totalTarget) * 100)}% overall)` : ""}
-                </span>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
+      
       </Row>
 
       {/* QUICK ADD: INCOME MODAL */}
@@ -763,7 +827,7 @@ export default function Dashboard() {
               />
             </Form.Group>
             <Form.Group className="mb-2">
-              <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+              <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
               <Form.Control
                 type="number"
                 required
@@ -846,7 +910,7 @@ export default function Dashboard() {
             </Form.Group>
 
             <Form.Group className="mb-2">
-              <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+              <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
               <Form.Control
                 type="number"
                 required

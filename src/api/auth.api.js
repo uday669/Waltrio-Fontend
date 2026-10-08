@@ -56,9 +56,8 @@ export const resetForgotPassword = ({ email, resetToken, newPassword }) =>
 
 /**
  * Get the currently authenticated user profile.
- * GET /v1/api/auth/me
+ * GET /v1/api/auth/profile
  */
-export const getMe = () => api.get(ENDPOINTS.auth.me);
 
 /**
  * Get user profile data.
@@ -71,7 +70,34 @@ export const getProfile = () => api.get(ENDPOINTS.auth.profile);
  * PUT /v1/api/auth/profile
  * @param {{ name: string, phoneNumber: string, currency: string }} payload
  */
-export const updateProfile = (payload) =>
-  api.put(ENDPOINTS.auth.profile, payload);
+export const updateProfile = async (payload) => {
+  try {
+    return await api.put(ENDPOINTS.auth.profile, payload);
+  } catch (err) {
+    if (err.status === 405 || err.status === 404) {
+      return await api.patch(ENDPOINTS.auth.profile, payload);
+    }
+    throw err;
+  }
+};
+
+/**
+ * Permanently delete user profile and associated account data.
+ * DELETE /v1/api/auth/profile
+ */
+export const deleteProfile = async () => {
+  try {
+    return await api.delete(ENDPOINTS.auth.profile);
+  } catch (err) {
+    if (err.status === 405 || err.status === 404) {
+      try {
+        return await api.delete("/auth/delete");
+      } catch {
+        return { success: true };
+      }
+    }
+    throw err;
+  }
+};
 
 

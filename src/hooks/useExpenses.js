@@ -1,9 +1,10 @@
-// TanStack Query hooks for the Expenses feature.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getToken } from "../api/client";
 import {
   getExpenses,
   getExpenseSummary,
-  getExpenseAnalytics,
+  getExpenseSpendingDistribution,
+  getExpenseWeeklyOutflow,
   createExpense,
   getExpense,
   updateExpense,
@@ -36,6 +37,8 @@ export function normalizeExpense(row) {
 }
 
 export function useExpenses(params = {}, options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: [...EXPENSES_KEY, "list", params],
     queryFn: () => getExpenses(params),
@@ -51,35 +54,76 @@ export function useExpenses(params = {}, options = {}) {
       }
       return items;
     },
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
 
 export function useExpenseSummary(params = {}, options = {}) {
+  const token = getToken();
+  const isOptionsOnly =
+    params &&
+    typeof params === "object" &&
+    (params.enabled !== undefined || params.retry !== undefined || params.select !== undefined);
+  const actualParams = isOptionsOnly ? {} : params;
+  const actualOptions = isOptionsOnly ? params : options;
+  const { enabled = true, ...restOptions } = actualOptions;
   return useQuery({
-    queryKey: [...EXPENSES_KEY, "summary", params],
-    queryFn: () => getExpenseSummary(params),
+    queryKey: [...EXPENSES_KEY, "summary", actualParams],
+    queryFn: () => getExpenseSummary(actualParams),
     select: unwrap,
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
 
-export function useExpenseAnalytics(params = {}, options = {}) {
+export function useExpenseSpendingDistribution(params = {}, options = {}) {
+  const token = getToken();
+  const isOptionsOnly =
+    params &&
+    typeof params === "object" &&
+    (params.enabled !== undefined || params.retry !== undefined || params.select !== undefined);
+  const actualParams = isOptionsOnly ? {} : params;
+  const actualOptions = isOptionsOnly ? params : options;
+  const { enabled = true, ...restOptions } = actualOptions;
   return useQuery({
-    queryKey: [...EXPENSES_KEY, "analytics", params],
-    queryFn: () => getExpenseAnalytics(params),
+    queryKey: [...EXPENSES_KEY, "spending-distribution", actualParams],
+    queryFn: () => getExpenseSpendingDistribution(actualParams),
     select: unwrap,
-    ...options,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
   });
 }
+
+export function useExpenseWeeklyOutflow(params = {}, options = {}) {
+  const token = getToken();
+  const isOptionsOnly =
+    params &&
+    typeof params === "object" &&
+    (params.enabled !== undefined || params.retry !== undefined || params.select !== undefined);
+  const actualParams = isOptionsOnly ? {} : params;
+  const actualOptions = isOptionsOnly ? params : options;
+  const { enabled = true, ...restOptions } = actualOptions;
+  return useQuery({
+    queryKey: [...EXPENSES_KEY, "weekly-outflow", actualParams],
+    queryFn: () => getExpenseWeeklyOutflow(actualParams),
+    select: unwrap,
+    enabled: Boolean(token) && Boolean(enabled),
+    ...restOptions,
+  });
+}
+
+export const useExpenseAnalytics = useExpenseSpendingDistribution;
 
 export function useExpense(id, options = {}) {
+  const token = getToken();
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: [...EXPENSES_KEY, "detail", id],
     queryFn: () => getExpense(id),
     select: (res) => normalizeExpense(unwrap(res)),
-    enabled: !!id,
-    ...options,
+    enabled: Boolean(token) && Boolean(id) && Boolean(enabled),
+    ...restOptions,
   });
 }
 

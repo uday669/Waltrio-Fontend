@@ -1,6 +1,6 @@
 // Central fetch client for all API calls.
 // Base URL comes from VITE_API_BASE_URL and falls back to the local server.
-import { setCookie, getCookie, deleteCookie } from "../lib/cookies";
+import { setCookie, getCookie, deleteCookie, clearAllCookies } from "../lib/cookies";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/v1/api";
@@ -17,24 +17,24 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = "waltrio_token";
 
-// JWT auth token is persisted in a cookie and localStorage so it survives reloads.
+// JWT auth token is persisted exclusively in a cookie with 1-day expiration.
 export const getToken = () => {
-  return getCookie(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || null;
+  return getCookie(TOKEN_KEY) || null;
 };
-export const setToken = (token, days = 7) => {
+
+export const setToken = (token, days = 1) => {
   if (!token) return;
   setCookie(TOKEN_KEY, token, days);
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    // ignore
-  }
 };
+
 export const clearToken = () => {
   deleteCookie(TOKEN_KEY);
+  clearAllCookies();
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem("waltrio_user");
+    localStorage.clear();
+    sessionStorage.clear();
   } catch {
     // ignore
   }
@@ -80,7 +80,11 @@ export async function request(path, { method = "GET", body, headers = {} } = {})
 
   let response;
   try {
-    response = await fetch(`${BASE_URL}${path}`, config);
+    const url =
+      path.startsWith("/v1/api") && BASE_URL.endsWith("/v1/api")
+        ? `${BASE_URL.replace(/\/v1\/api$/, "")}${path}`
+        : `${BASE_URL}${path}`;
+    response = await fetch(url, config);
   } catch {
     // Network / server-down errors never reach the JSON parse below.
     throw new ApiError("Unable to reach the server. Please try again.", {

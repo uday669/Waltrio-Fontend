@@ -43,7 +43,9 @@ import CommonDataTable from "../../components/common/DataTable";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useExpenses,
-  useExpenseAnalytics,
+  useExpenseSummary,
+  useExpenseSpendingDistribution,
+  useExpenseWeeklyOutflow,
   useCreateExpense,
   useUpdateExpense,
   useDeleteExpense,
@@ -51,11 +53,13 @@ import {
 import { deleteExpense } from "../../api/expenses.api";
 import { toast } from "../../lib/toast";
 import { useCategories } from "../../context/CategoryContext";
+import { useAuth } from "../../context/AuthContext";
 import MonthYearFilter, { MONTHS } from "../../components/common/MonthYearFilter";
 import AppDatePicker from "../../components/common/AppDatePicker";
 
 export default function Expenses() {
   const queryClient = useQueryClient();
+  const { currencySymbol } = useAuth();
   const { expenseCategories, getCategoryMeta } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus] = useState("all");
@@ -70,9 +74,6 @@ export default function Expenses() {
   const selectedMonthName = useMemo(() => {
     return MONTHS.find((m) => m.value === Number(selectedMonth))?.label || "Month";
   }, [selectedMonth]);
-
-  // Monthly budget limit for the (computed) daily-pace metric.
-  const monthlyBudgetLimit = 35000;
 
   // Translate active filter mode into GET /expenses list query params:
   // ?filter=day&day=3&month=10&year=2026 or ?filter=month&month=10&year=2026 or ?filter=year&year=2026
@@ -110,8 +111,8 @@ export default function Expenses() {
     };
   }, [selectedMode, selectedDate, selectedMonth, selectedYear, selectedCategory, selectedStatus, page, limit]);
 
-  // Analytics Query Params: ?filter=month&month=10&year=2026 or ?filter=day&day=3&month=10&year=2026 or ?filter=year&year=2026
-  const analyticsParams = useMemo(() => {
+  // Summary & Spending Distribution Query Params: ?filter=month&month=10&year=2026 or ?filter=day&day=15&month=10&year=2026 or ?filter=year&year=2026
+  const summaryParams = useMemo(() => {
     if (selectedMode === "date" && selectedDate) {
       const parts = selectedDate.split("-").map(Number);
       if (parts.length >= 3) {
@@ -128,6 +129,33 @@ export default function Expenses() {
         filter: "year",
         year: Number(selectedYear),
       };
+    }
+    return {
+      filter: "month",
+      month: Number(selectedMonth),
+      year: Number(selectedYear),
+    };
+  }, [selectedMode, selectedDate, selectedMonth, selectedYear]);
+
+  const distributionParams = summaryParams;
+
+  // Weekly Outflow Query Params: ONLY supports filter=month&month=10&year=2026 or filter=year&year=2026
+  const weeklyOutflowParams = useMemo(() => {
+    if (selectedMode === "year") {
+      return {
+        filter: "year",
+        year: Number(selectedYear),
+      };
+    }
+    if (selectedMode === "date" && selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length >= 2) {
+        return {
+          filter: "month",
+          month: parts[1],
+          year: parts[0],
+        };
+      }
     }
     return {
       filter: "month",
@@ -154,7 +182,9 @@ export default function Expenses() {
   const expenses = useMemo(() => expensesData || [], [expensesData]);
   const totalCount = expensesData?.total ?? expensesData?.pagination?.total ?? expenses.length;
 
-  const { data: analyticsData } = useExpenseAnalytics(analyticsParams);
+  const { data: summaryData } = useExpenseSummary(summaryParams);
+  const { data: distributionData } = useExpenseSpendingDistribution(distributionParams);
+  const { data: weeklyOutflowData } = useExpenseWeeklyOutflow(weeklyOutflowParams);
 
   // ---- Mutations --------------------------------------------------------
   const { mutate: createExpenseMut, isPending: creating } = useCreateExpense({
@@ -232,7 +262,6 @@ export default function Expenses() {
     const paid = expenses
       .filter((e) => e.status === "Paid")
       .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-    const budgetPct = Math.min(100, Math.round((total / monthlyBudgetLimit) * 100));
     const dailyAvg = Math.round(total / 20);
 
     // Top Category
@@ -249,7 +278,7 @@ export default function Expenses() {
       }
     });
 
-    return { total, paid, budgetPct, dailyAvg, topCat, maxVal };
+    return { total, paid, dailyAvg, topCat, maxVal };
   }, [expenses]);
 
   // Filtered dataset for table
@@ -266,39 +295,46 @@ export default function Expenses() {
     });
   }, [expenses, selectedCategory, selectedStatus, selectedMode, selectedDate]);
 
-  // Derive metric cards from GET /expenses/analytics
-  const a = analyticsData || {};
+  // Derive metric cards from GET /expenses/summary
+  const s = summaryData || {};
   const largestCatName =
-    a.largestCostCategory?.category ||
-    (typeof a.largestCostCategory === "string" ? a.largestCostCategory : metrics.topCat);
+    s.largestCostCategory?.category ||
+    s.largestCostCategory?.name ||
+    (typeof s.largestCostCategory === "string" ? s.largestCostCategory : metrics.topCat);
   const largestCatMeta = getCategoryMeta(largestCatName, "expense");
 
   const cards = {
-    total: Number(a.totalOutflow ?? a.totalSpent ?? metrics.total),
-    dailyAvg: Number(a.dailyAverageSpend ?? metrics.dailyAvg),
+    total: Number(s.totalOutflow ?? s.totalSpent ?? metrics.total),
+    dailyAvg: Number(s.dailyAverageSpend ?? metrics.dailyAvg),
     topCat: largestCatName,
     maxVal: Number(
-      a.largestCostCategory?.price ??
-        a.largestCostCategory?.total ??
+      s.largestCostCategory?.total ??
+        s.largestCostCategory?.price ??
+        s.largestCostCategory?.amount ??
         metrics.maxVal
     ),
-    totalEntries: a.totalEntries ?? tableData.length ?? expenses.length,
+    totalEntries: s.totalEntries ?? tableData.length ?? expenses.length,
   };
 
-  // ---- Chart data from GET /expenses/analytics (fallback: compute) ------
+  // ---- Chart data from GET /expenses/weekly-outflow & GET /expenses/spending-distribution (fallback: compute) ------
   const EXP_DONUT_COLORS = ["#4f46e5", "#8b5cf6", "#f59e0b", "#ec4899", "#10b981", "#06b6d4", "#ef4444", "#d97706"];
-  const { trendCats, trendSpent, trendTarget, donutItems } = useMemo(() => {
-    const an = analyticsData || {};
-
-    // 1. Weekly Outflow vs Target Limit
+  const { trendCats, trendSpent, donutItems } = useMemo(() => {
+    // 1. Weekly Outflow
     let tCats = [];
     let tSpent = [];
-    let tTarget = [];
-    const tr = an.weeklyOutflow ?? an.trend ?? an.spending ?? an.weekly ?? an.outflow ?? null;
+    const tr =
+      weeklyOutflowData?.weeks ??
+      weeklyOutflowData?.weeklyOutflow ??
+      weeklyOutflowData?.outflow ??
+      weeklyOutflowData?.data?.weeks ??
+      weeklyOutflowData?.data ??
+      weeklyOutflowData?.trend ??
+      weeklyOutflowData?.spending ??
+      (Array.isArray(weeklyOutflowData) ? weeklyOutflowData : null);
+
     if (Array.isArray(tr) && tr.length) {
       tCats = tr.map((p) => p.label ?? (p.week != null ? `Week ${p.week}` : p.name ?? ""));
-      tSpent = tr.map((p) => Number(p.actualSpent ?? p.spent ?? p.amount ?? p.value ?? 0));
-      tTarget = tr.map((p) => Number(p.targetLimit ?? p.target ?? p.budget ?? 0));
+      tSpent = tr.map((p) => Number(p.totalSpent ?? p.spent ?? p.actualSpent ?? p.total ?? p.amount ?? p.value ?? 0));
     } else if (expenses.length) {
       // Fallback: Last 6 months of outflow from real records
       const byMonth = {};
@@ -314,19 +350,18 @@ export default function Expenses() {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         tCats.push(d.toLocaleString("en-US", { month: "short" }));
         tSpent.push(byMonth[key] || 0);
-        tTarget.push(Math.round(monthlyBudgetLimit));
       }
     }
 
     // 2. Spending Distribution Category Donut
     let dItems = [];
     const distCats =
-      an.spendingDistribution?.categories ??
-      an.spendingDistribution ??
-      an.byCategory ??
-      an.categoryShare ??
-      an.categories ??
-      null;
+      distributionData?.categories ??
+      distributionData?.spendingDistribution?.categories ??
+      distributionData?.spendingDistribution ??
+      distributionData?.byCategory ??
+      distributionData?.categoryShare ??
+      (Array.isArray(distributionData) ? distributionData : null);
 
     if (Array.isArray(distCats) && distCats.length) {
       dItems = distCats.map((it, i) => {
@@ -336,6 +371,7 @@ export default function Expenses() {
           name: catName,
           value: Number(it.percentage ?? it.total ?? it.value ?? 0),
           amount: Number(it.total ?? it.amount ?? 0),
+          count: it.count,
           color: catMeta?.color ?? it.color ?? EXP_DONUT_COLORS[i % EXP_DONUT_COLORS.length],
         };
       });
@@ -358,13 +394,13 @@ export default function Expenses() {
         });
     }
 
-    return { trendCats: tCats, trendSpent: tSpent, trendTarget: tTarget, donutItems: dItems };
-  }, [analyticsData, expenses, monthlyBudgetLimit, getCategoryMeta]);
+    return { trendCats: tCats, trendSpent: tSpent, donutItems: dItems };
+  }, [weeklyOutflowData, distributionData, expenses, getCategoryMeta]);
 
   const donutLabels = donutItems.map((d) => d.name);
   const donutColors = donutItems.map((d) => d.color);
 
-  // ApexChart: Spending Trend vs Budget
+  // ApexChart: Spending Trend / Weekly Outflow
   const spendingTrendOptions = {
     chart: {
       type: "bar",
@@ -381,7 +417,7 @@ export default function Expenses() {
         borderRadiusApplication: "end",
       },
     },
-    colors: ["#ef4444", "#cbd5e1"],
+    colors: ["#ef4444"],
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ["transparent"] },
     xaxis: {
@@ -394,7 +430,7 @@ export default function Expenses() {
       min: 0,
       forceNiceScale: true,
       labels: {
-        formatter: (val) => (val >= 1000 ? `₹${(val / 1000).toFixed(val % 1000 ? 1 : 0)}k` : `₹${Math.round(val)}`),
+        formatter: (val) => (val >= 1000 ? `${currencySymbol}${(val / 1000).toFixed(val % 1000 ? 1 : 0)}k` : `${currencySymbol}${Math.round(val)}`),
         style: { colors: "#64748b", fontSize: "11px", fontWeight: 500 },
       },
     },
@@ -406,13 +442,12 @@ export default function Expenses() {
     legend: { show: false },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `₹${val.toLocaleString("en-IN")}` },
+      y: { formatter: (val) => `${currencySymbol}${Number(val || 0).toLocaleString("en-IN")}` },
     },
   };
 
   const spendingTrendSeries = [
-    { name: "Spent Outflow", data: trendSpent },
-    { name: "Budget Target", data: trendTarget },
+    { name: "Outflow", data: trendSpent },
   ];
 
   // ApexChart: Expense Distribution Donut
@@ -447,7 +482,7 @@ export default function Expenses() {
     stroke: { width: 2, colors: ["#ffffff"] },
     tooltip: {
       theme: "light",
-      y: { formatter: (val) => `${val}% (₹${((val / 100) * cards.total).toFixed(0)})` },
+      y: { formatter: (val) => `${val}% (${currencySymbol}${((val / 100) * cards.total).toFixed(0)})` },
     },
   };
 
@@ -599,26 +634,6 @@ export default function Expenses() {
       },
     },
     {
-      name: "Account / Method",
-      selector: (row) => row.account,
-      sortable: true,
-      minWidth: "160px",
-      cell: (row) => (
-        <div className="d-flex align-items-center gap-1 fs-12px">
-          {row.account.includes("HDFC") || row.account.includes("ICICI") ? (
-            <BsBank2 className="text-primary me-1" size={12} />
-          ) : row.account.includes("GPay") ? (
-            <SiGooglepay className="text-info me-1" size={13} />
-          ) : row.account.includes("PhonePe") ? (
-            <SiPhonepe className="text-primary me-1" size={13} />
-          ) : (
-            <IoWalletOutline className="text-secondary me-1" size={13} />
-          )}
-          <span className="text-dark fw-500">{row.account}</span>
-        </div>
-      ),
-    },
-    {
       name: "Date",
       selector: (row) => row.date,
       sortable: true,
@@ -634,26 +649,6 @@ export default function Expenses() {
       ),
     },
     {
-      name: "Status",
-      selector: (row) => row.status,
-      sortable: true,
-      width: "110px",
-      cell: (row) => (
-        <span
-          className={`ur-status-pill ${
-            row.status === "Paid" ? "success" : "warning"
-          }`}
-        >
-          {row.status === "Paid" ? (
-            <FiCheckCircle size={10} className="me-1" />
-          ) : (
-            <FiClock size={10} className="me-1" />
-          )}
-          {row.status}
-        </span>
-      ),
-    },
-    {
       name: "Amount",
       selector: (row) => row.amount,
       sortable: true,
@@ -662,7 +657,7 @@ export default function Expenses() {
       cell: (row) => (
         <div className="text-end">
           <div className="fw-800 text-danger fs-13px">
-            -₹{Number(row.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            -{currencySymbol}{Number(row.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </div>
           {row.receipt && (
             <span className="text-muted fs-10px d-flex align-items-center justify-content-end gap-1">
@@ -759,7 +754,7 @@ export default function Expenses() {
                     Total Outflow ({selectedMode === "date" ? "Day" : "Month"})
                   </div>
                   <div className="ms-stat-val text-danger">
-                    ₹{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {currencySymbol}{cards.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#fff1f2" }}>
@@ -785,7 +780,7 @@ export default function Expenses() {
                 <div>
                   <div className="ms-stat-title">Daily Average Spend</div>
                   <div className="ms-stat-val">
-                    ₹{cards.dailyAvg.toLocaleString("en-IN")}
+                    {currencySymbol}{cards.dailyAvg.toLocaleString("en-IN")}
                   </div>
                 </div>
                 <div className="ms-stat-icon-box" style={{ backgroundColor: "#f5f3ff" }}>
@@ -793,7 +788,7 @@ export default function Expenses() {
                 </div>
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                <span className="text-dark fw-700 fs-11px">₹{cards.dailyAvg.toLocaleString("en-IN")}/day</span>
+                <span className="text-dark fw-700 fs-11px">{currencySymbol}{cards.dailyAvg.toLocaleString("en-IN")}/day</span>
                 <span className="ms-stat-sub-text">Calculated average</span>
               </div>
             </Card.Body>
@@ -816,7 +811,7 @@ export default function Expenses() {
               </div>
               <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
                 <span className="text-danger fw-700 fs-11px">
-                  ₹{cards.maxVal.toLocaleString("en-IN")}
+                  {currencySymbol}{cards.maxVal.toLocaleString("en-IN")}
                 </span>
                 <span className="ms-stat-sub-text">Top spending area</span>
               </div>
@@ -835,19 +830,15 @@ export default function Expenses() {
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <div>
-                  <h5 className="ms-card-title mb-0">Weekly Outflow vs Target Limit</h5>
+                  <h5 className="ms-card-title mb-0">Weekly Outflow</h5>
                   <p className="text-muted fs-11px mb-0">
                     Expense pacing across {selectedMode === "date" && selectedDate ? selectedDate : `${selectedMonthName} ${selectedYear}`}
                   </p>
                 </div>
-                <div className="d-flex align-items-center gap-3 fs-11px">
+                <div className="d-flex align-items-center gap-2 fs-11px">
                   <span className="d-flex align-items-center gap-1">
                     <span className="ms-legend-square" style={{ backgroundColor: "#ef4444" }}></span>
-                    <span className="fw-600 text-dark">Actual Spent</span>
-                  </span>
-                  <span className="d-flex align-items-center gap-1">
-                    <span className="ms-legend-square" style={{ backgroundColor: "#cbd5e1" }}></span>
-                    <span className="fw-600 text-dark">Target Limit</span>
+                    <span className="fw-600 text-dark">Outflow</span>
                   </span>
                 </div>
               </div>
@@ -1003,7 +994,7 @@ export default function Expenses() {
 
               <Col xs={12}>
                 <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+                  <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
                   <Form.Control
                     type="number"
                     required
@@ -1102,7 +1093,7 @@ export default function Expenses() {
 
               <Col xs={12}>
                 <Form.Group className="mb-2">
-                  <Form.Label className="ur-form-label">Amount (₹) *</Form.Label>
+                  <Form.Label className="ur-form-label">Amount ({currencySymbol}) *</Form.Label>
                   <Form.Control
                     type="number"
                     required
@@ -1162,7 +1153,7 @@ export default function Expenses() {
           </div>
           <h5 className="fw-700 text-dark mb-1">Delete Expense Record?</h5>
           <p className="text-muted fs-12px mb-3">
-            Are you sure you want to delete <strong>{activeExpense?.merchant}</strong> (-₹{activeExpense?.amount?.toLocaleString("en-IN")})? This action cannot be undone.
+            Are you sure you want to delete <strong>{activeExpense?.merchant}</strong> (-{currencySymbol}{activeExpense?.amount?.toLocaleString()})? This action cannot be undone.
           </p>
           <div className="d-flex justify-content-center gap-2">
             <Button variant="light" size="sm" onClick={() => setShowDeleteModal(false)} className="rounded-6px px-3">
@@ -1191,7 +1182,7 @@ export default function Expenses() {
               <div className="ur-details-highlight-card expense p-3 rounded-10px mb-3 text-center">
                 <span className="text-muted fs-11px">TOTAL AMOUNT DEBITED</span>
                 <div className="fw-800 text-danger fs-24px my-1">
-                  -₹{Number(activeExpense.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  -{currencySymbol}{Number(activeExpense.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
                 <Badge bg="danger-subtle" className="text-danger fs-11px px-2 py-1 rounded-6px">
                   Status: {activeExpense.status}

@@ -20,9 +20,13 @@ export const getIncomes = (params) =>
 export const getIncomeSummary = (params) =>
   api.get(`${ENDPOINTS.incomes.summary}${toQuery(params)}`, { auth: true });
 
-// GET /incomes/analytics — data for the two charts.
-export const getIncomeAnalytics = (params) =>
-  api.get(`${ENDPOINTS.incomes.analytics}${toQuery(params)}`, { auth: true });
+// GET /incomes/velocity — data for Income Inflow Velocity chart.
+export const getIncomeVelocity = (params = {}) =>
+  api.get(`${ENDPOINTS.incomes.velocity}${toQuery(params)}`, { auth: true });
+
+// GET /incomes/revenue-share — data for Revenue Share by Category donut chart (filtered by month & year).
+export const getIncomeRevenueShare = (params = {}) =>
+  api.get(`${ENDPOINTS.incomes.revenueShare}${toQuery(params)}`, { auth: true });
 
 // POST /incomes — create a new income.
 export const createIncome = (payload) =>

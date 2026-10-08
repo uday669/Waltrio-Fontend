@@ -1,7 +1,8 @@
 import React from "react";
 import Button from "react-bootstrap/Button";
-import { FiMenu, FiPlus, FiArrowUpRight, FiArrowDownLeft } from "react-icons/fi";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { FiMenu, FiArrowUpRight, FiArrowDownLeft } from "react-icons/fi";
+import { IoWalletOutline } from "react-icons/io5";
 
 export default function Header({ onToggleSidebar }) {
   const location = useLocation();
@@ -16,6 +17,8 @@ export default function Header({ onToggleSidebar }) {
         return { section: "Finance", current: "Expenses & Bills" };
       case "/budgets":
         return { section: "Planning", current: "Budget Caps" };
+      case "/profile":
+        return { section: "Account", current: "User Profile" };
       case "/settings":
         return { section: "Preferences", current: "Settings" };
       default:
@@ -27,25 +30,31 @@ export default function Header({ onToggleSidebar }) {
 
   return (
     <header className="ur-top-header">
-      {/* Header Left: Hamburger (mobile) + Dynamic Breadcrumb */}
-      <div className="d-flex align-items-center gap-2">
-        <button
-          className="ur-hamburger-btn"
-          onClick={onToggleSidebar}
-          aria-label="Toggle sidebar menu"
-        >
-          <FiMenu size={18} />
-        </button>
+      {/* Header Left: Mobile Brand Logo on Left, Desktop Breadcrumb on Left */}
+      <div className="ur-header-left d-flex align-items-center gap-2">
+        {/* Mobile / Responsive: Brand Logo on Left */}
+        <Link to="/dashboard" className="ur-brand-logo ur-header-mobile-brand text-decoration-none">
+          <div className="ur-brand-icon">
+            <IoWalletOutline size={20} />
+          </div>
+          <div className="d-flex align-items-center">
+            <span className="ur-brand-name">
+              Wal<span>trio</span>
+            </span>
+            <span className="ur-brand-badge">SaaS</span>
+          </div>
+        </Link>
 
-        <div className="ur-breadcrumb-wrap">
+        {/* Desktop: Dynamic Breadcrumb */}
+        <div className="ur-breadcrumb-wrap ur-header-desktop-breadcrumb">
           <span className="ur-breadcrumb-root">{breadcrumb.section}</span>
           <span className="ur-breadcrumb-divider">/</span>
           <strong className="ur-breadcrumb-active">{breadcrumb.current}</strong>
         </div>
       </div>
 
-      {/* Header Actions on Right */}
-      <div className="ur-header-actions">
+      {/* Header Right: Actions + Mobile Bar Open (Hamburger) Button */}
+      <div className="ur-header-actions d-flex align-items-center gap-2">
         <div className="ur-header-badge-status d-none d-sm-inline-flex">
           <span className="ur-live-dot"></span>
           <span>Live Sync</span>
@@ -74,6 +83,15 @@ export default function Header({ onToggleSidebar }) {
             <span>Expense</span>
           </Button>
         )}
+
+        {/* Mobile / Responsive: Bar Open Button on Right */}
+        <button
+          className="ur-hamburger-btn"
+          onClick={onToggleSidebar}
+          aria-label="Toggle sidebar menu"
+        >
+          <FiMenu size={18} />
+        </button>
       </div>
     </header>
   );

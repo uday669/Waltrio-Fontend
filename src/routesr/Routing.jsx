@@ -8,15 +8,9 @@ import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/dashboard/dashboard';
 import Income from '../pages/income/Income';
 import Expenses from '../pages/expenses/Expenses';
-import Transactions from '../pages/transactions/Transactions';
-import GroupsSplit from '../pages/split/GroupsSplit';
-import EmiLoans from '../pages/emi/EmiLoans';
 import Budgets from '../pages/budgets/Budgets';
-import SavingsGoals from '../pages/goals/SavingsGoals';
 import Settings from '../pages/settings/Settings';
-import Calendar from '../pages/calendar/Calendar';
-import Reports from '../pages/reports/Reports';
-import Notifications from '../pages/notifications/Notifications';
+import Profile from '../pages/profile/Profile';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 
@@ -66,14 +60,8 @@ export default function Routing() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/income" element={<Income />} />
           <Route path="/expenses" element={<Expenses />} />
-          {/* <Route path="/transactions" element={<Transactions />} /> */}
           <Route path="/budgets" element={<Budgets />} />
-          {/* <Route path="/goals" element={<SavingsGoals />} /> */}
-          {/* <Route path="/split" element={<GroupsSplit />} /> */}
-          {/* <Route path="/emi" element={<EmiLoans />} /> */}
-          {/* <Route path="/calendar" element={<Calendar />} /> */}
-          {/* <Route path="/reports" element={<Reports />} /> */}
-          {/* <Route path="/notifications" element={<Notifications />} /> */}
+          <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>

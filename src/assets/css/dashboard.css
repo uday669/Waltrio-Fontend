@@ -399,6 +399,14 @@
   border-color: #cbd5e1;
 }
 
+.ur-header-mobile-brand {
+  display: none !important;
+}
+
+.ur-header-desktop-breadcrumb {
+  display: flex !important;
+}
+
 .ur-breadcrumb-wrap {
   display: flex;
   align-items: center;
@@ -1732,4 +1740,151 @@
   background-color: #ffffff;
   border-color: #e2e8f0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================================================================
+   CURRENCY SELECTOR MODAL (EXACT DESIGN MATCH)
+   ========================================================================== */
+.ur-currency-modal .modal-dialog,
+.ur-currency-modal-dialog {
+  max-width: 540px !important;
+  width: 94% !important;
+  margin: 1.75rem auto !important;
+}
+
+.ur-currency-modal .modal-content {
+  border-radius: 20px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18) !important;
+  overflow: hidden !important;
+  background-color: #ffffff !important;
+}
+
+.ur-currency-scroll {
+  max-height: 440px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 14px 14px 14px;
+  /* Hide scrollbar completely to match mockup */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.ur-currency-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ==========================================================================
+   CATEGORY ACTION BUTTONS (SQUARE & COLORFUL)
+   ========================================================================== */
+.cat-action-btn {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  box-sizing: border-box !important;
+}
+
+.cat-edit-btn {
+  background-color: #eff6ff !important;
+  color: #4f46e5 !important;
+  border: 1px solid #c7d2fe !important;
+}
+.cat-edit-btn:hover {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 3px 8px rgba(79, 70, 229, 0.35) !important;
+}
+
+.cat-delete-btn {
+  background-color: #fff1f2 !important;
+  color: #e11d48 !important;
+  border: 1px solid #fecdd3 !important;
+}
+.cat-delete-btn:hover {
+  background-color: #e11d48 !important;
+  color: #ffffff !important;
+  border-color: #e11d48 !important;
+  box-shadow: 0 3px 8px rgba(225, 29, 72, 0.35) !important;
+}
+
+/* ==========================================================================
+   CATEGORY MODAL CLASSIFICATION TOGGLE
+   ========================================================================== */
+.cat-type-toggle-wrap {
+  display: flex !important;
+  background-color: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 9px !important;
+  padding: 3px !important;
+  gap: 4px !important;
+}
+
+.cat-type-toggle-btn {
+  flex: 1 1 0% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 7px !important;
+  background-color: transparent !important;
+  color: #64748b !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.cat-type-toggle-btn.active.expense {
+  background-color: #ffffff !important;
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.08) !important;
+}
+
+.cat-type-toggle-btn.active.income {
+  background-color: #ffffff !important;
+  color: #059669 !important;
+  border-color: #a7f3d0 !important;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.08) !important;
+}
+
+.cat-type-toggle-btn:not(.active):hover {
+  color: #1e293b !important;
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ==========================================================================
+   DELETE MODAL SIZING & DIALOG
+   ========================================================================== */
+.ur-delete-modal-dialog {
+  max-width: 380px !important;
+  width: 90% !important;
+  margin: 1.75rem auto !important;
+}
+
+.ur-delete-modal-dialog .modal-content {
+  border-radius: 18px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08) !important;
+  overflow: hidden !important;
 }
