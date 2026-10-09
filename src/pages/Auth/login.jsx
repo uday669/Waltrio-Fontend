@@ -4,7 +4,8 @@ import Col from "react-bootstrap/Col";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import Auth from "../../components/auth";
-import { useLogin } from "../../hooks/useAuth";
+import { useLogin, extractUserData } from "../../hooks/useAuth";
+import { getProfile } from "../../api/auth.api";
 import { toast } from "../../lib/toast";
 import '../../assets/css/style.css';
 import '../../assets/css/responsive.css';
@@ -14,6 +15,7 @@ export default function Login() {
   const location = useLocation();
   const verified = location.state?.verified;
   const [showPassword, setShowPassword] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(false);
   const [formData, setFormData] = useState({
     email: location.state?.email || "",
     password: "",
@@ -22,11 +24,40 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const { mutate: login, isPending: loading } = useLogin({
-    onSuccess: () => {
+    onSuccess: async (loginData) => {
+      setCheckingProfile(true);
+      try {
+        const profileRes = await getProfile();
+        const profile = extractUserData(profileRes);
+        const isOnboarded =
+          profile?.onboarding !== undefined
+            ? profile.onboarding
+            : profile?.isOnboarded !== undefined
+            ? profile.isOnboarded
+            : undefined;
+
+        if (isOnboarded === false) {
+          toast.success("Welcome! Let's set up your workspace & currency.");
+          navigate("/onboarding", { replace: true });
+          return;
+        }
+      } catch (profileErr) {
+        console.warn("[login] Profile check error, checking login payload:", profileErr);
+        const fallbackUser = extractUserData(loginData);
+        if (fallbackUser?.onboarding === false || fallbackUser?.isOnboarded === false) {
+          toast.success("Welcome! Let's set up your workspace & currency.");
+          navigate("/onboarding", { replace: true });
+          return;
+        }
+      } finally {
+        setCheckingProfile(false);
+      }
+
       toast.success("Welcome back! Signing you in.");
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     },
     onError: (err) => {
+      setCheckingProfile(false);
       // If the account exists but isn't verified, send them to OTP.
       if (err.status === 403) {
         toast.info("Please verify your email to continue.");
@@ -173,10 +204,10 @@ export default function Login() {
               <button
                 type="submit"
                 className="btn btn-theme w-100"
-                disabled={loading}
+                disabled={loading || checkingProfile}
               >
-                {loading ? (
-                  <span className="d-flex align-items-center gap-2">
+                {loading || checkingProfile ? (
+                  <span className="d-flex align-items-center justify-content-center gap-2">
                     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     <span>Signing In...</span>
                   </span>

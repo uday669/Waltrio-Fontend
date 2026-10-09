@@ -1,0 +1,587 @@
+/* ===================================================================
+   WALTRIO - GROUP & SPLIT EXPENSES (PREMIUM SAAS DESIGN)
+   =================================================================== */
+
+.ur-groups-page {
+  padding-bottom: 2.5rem;
+}
+
+/* Header Action Section */
+.ur-groups-header-wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ur-groups-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin-bottom: 3px;
+}
+
+.ur-groups-desc {
+  font-size: 13.5px;
+  color: #64748b;
+  margin-bottom: 0;
+}
+
+/* Search Toolbar */
+.ur-groups-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ur-groups-search-box {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.ur-groups-search-input {
+  width: 100%;
+  height: 42px;
+  padding-left: 40px;
+  padding-right: 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #ffffff;
+  font-size: 13px;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+.ur-groups-search-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
+}
+
+.ur-groups-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+/* ===================================================================
+   GROUP CARDS (PREMIUM EXECUTIVE CARDS)
+   =================================================================== */
+
+.ur-premium-group-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  cursor: pointer;
+  position: relative;
+}
+
+.ur-premium-group-card:hover {
+  border-color: #6366f1;
+  box-shadow: 0 10px 24px -4px rgba(79, 70, 229, 0.09);
+  transform: translateY(-2px);
+}
+
+.ur-group-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 0.9rem;
+}
+
+.ur-group-icon-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 23px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.ur-premium-group-card:hover .ur-group-icon-avatar {
+  transform: scale(1.06);
+  border-color: #cbd5e1;
+}
+
+.ur-group-meta-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+
+.ur-group-meta-desc {
+  font-size: 12.5px;
+  color: #64748b;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+/* Card Numbers Row */
+.ur-group-card-numbers {
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.ur-card-num-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.ur-card-num-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* Card Bottom Row */
+.ur-group-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.65rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ur-card-link-btn {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #4f46e5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.15s ease;
+}
+
+.ur-premium-group-card:hover .ur-card-link-btn {
+  transform: translateX(3px);
+}
+
+/* ===================================================================
+   GROUP DETAIL VIEW (CLEAN EXECUTIVE WHITE CARD SYSTEM)
+   =================================================================== */
+
+.ur-group-detail-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  margin-bottom: 1.5rem;
+}
+
+.ur-detail-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.ur-detail-title-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ur-detail-avatar-box {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: #eef2ff;
+  border: 1.5px solid #e0e7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.ur-detail-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin-bottom: 3px;
+}
+
+.ur-detail-desc {
+  font-size: 13px;
+  color: #64748b;
+  max-width: 600px;
+  margin-bottom: 0;
+}
+
+/* 3 Stat Cards in Detail */
+.ur-detail-stat-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+}
+
+.ur-detail-stat-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.ur-detail-stat-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Modern Tabs Bar */
+.ur-modern-tabs {
+  display: flex;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ur-modern-tab-btn {
+  border: none;
+  background: transparent;
+  padding: 7px 16px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.ur-modern-tab-btn:hover {
+  color: #0f172a;
+}
+
+.ur-modern-tab-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.ur-tab-counter-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 12px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.ur-modern-tab-btn.active .ur-tab-counter-badge {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+/* Expense Rows in Detail View */
+.ur-clean-expense-row {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.95rem 1.25rem;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.18s ease;
+}
+
+.ur-clean-expense-row:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.ur-clean-expense-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* Debts & Settlement Cards */
+.ur-clean-debt-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  transition: all 0.18s ease;
+}
+
+.ur-clean-debt-card:hover {
+  border-color: #a5b4fc;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ur-group-detail-card {
+    padding: 1.15rem;
+  }
+  .ur-groups-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ur-groups-search-box {
+    max-width: 100%;
+  }
+}
+
+/* ===================================================================
+   AVATAR STACK (HORIZONTAL OVERLAPPING AVATARS)
+   =================================================================== */
+.ur-avatar-stack {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+.ur-avatar-stack-item {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 2px solid #ffffff !important;
+  margin-left: -8px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12) !important;
+  text-transform: uppercase !important;
+  flex-shrink: 0 !important;
+}
+
+.ur-avatar-stack-item:first-child {
+  margin-left: 0 !important;
+}
+
+.ur-avatar-stack-more {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 2px solid #ffffff !important;
+  margin-left: -8px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Balance Pill */
+.ur-balance-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 8px;
+  letter-spacing: -0.01em;
+}
+
+.ur-balance-pill.owed {
+  color: #16a34a;
+  background-color: #f0fdf4;
+}
+
+.ur-balance-pill.owe {
+  color: #dc2626;
+  background-color: #fef2f2;
+}
+
+.ur-balance-pill.settled {
+  color: #64748b;
+  background-color: #f8fafc;
+}
+
+/* Container */
+.ur-groups-container {
+  padding-bottom: 2.5rem;
+}
+
+/* Expense Items & Debt Cards */
+.ur-group-expense-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.95rem 1.25rem;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.18s ease;
+}
+
+.ur-group-expense-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.ur-expense-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.ur-debt-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  transition: all 0.18s ease;
+}
+
+.ur-debt-card:hover {
+  border-color: #a5b4fc;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);
+}
+
+.ur-member-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* ===================================================================
+   INVITE MODAL (EXECUTIVE SAAS MODAL)
+   =================================================================== */
+.ur-invite-modal .modal-content {
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px -8px rgba(15, 23, 42, 0.16);
+  overflow: hidden;
+}
+
+.ur-invite-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: #eef2ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ur-invite-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background-color 0.15s ease;
+}
+
+.ur-invite-member-row:hover {
+  background-color: #f8fafc;
+}
+
+.ur-invite-link-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

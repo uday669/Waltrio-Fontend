@@ -11,6 +11,8 @@ import Expenses from '../pages/expenses/Expenses';
 import Budgets from '../pages/budgets/Budgets';
 import Settings from '../pages/settings/Settings';
 import Profile from '../pages/profile/Profile';
+import Groups from '../pages/groups/Groups';
+import Onboarding from '../pages/onboarding/Onboarding';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 
@@ -26,6 +28,9 @@ export default function Routing() {
           </PublicRoute>
         }
       />
+
+      {/* Dedicated Onboarding Flow (Currency & Categories Setup) */}
+      <Route path="/onboarding" element={<Onboarding />} />
 
       {/* Public Auth Routes */}
       <Route
@@ -61,6 +66,8 @@ export default function Routing() {
           <Route path="/income" element={<Income />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/budgets" element={<Budgets />} />
+          <Route path="/groups" element={<Groups />} />
+          <Route path="/split" element={<Navigate to="/groups" replace />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

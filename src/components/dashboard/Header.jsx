@@ -17,6 +17,9 @@ export default function Header({ onToggleSidebar }) {
         return { section: "Finance", current: "Expenses & Bills" };
       case "/budgets":
         return { section: "Planning", current: "Budget Caps" };
+      case "/groups":
+      case "/split":
+        return { section: "Social Finance", current: "Group & Split Expenses" };
       case "/profile":
         return { section: "Account", current: "User Profile" };
       case "/settings":

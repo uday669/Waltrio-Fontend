@@ -24,6 +24,7 @@ import {
   FiList,
   FiAlertTriangle,
   FiDroplet,
+  FiSliders,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useProfile } from "../../hooks/useAuth";
@@ -181,7 +182,14 @@ export default function Settings() {
           </p>
         </div>
 
-        <div>
+        <div className="d-flex align-items-center gap-2">
+          <Link
+            to="/onboarding"
+            className="btn btn-outline-secondary d-flex align-items-center gap-1.5 py-2 px-3 rounded-10px fw-600 fs-13px"
+          >
+            <FiSliders size={15} />
+            <span>Setup Wizard</span>
+          </Link>
           <Button
             type="button"
             className="d-flex align-items-center gap-2 py-2 px-3.5 rounded-10px fw-700 fs-13px border-0 shadow-sm"

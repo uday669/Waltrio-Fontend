@@ -137,6 +137,36 @@ export function extractUserData(payload) {
 
   const currency = raw.currency || raw.Currency || "INR";
 
+  const parseBool = (val) => {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === "boolean") return val;
+    if (typeof val === "string") {
+      const lower = val.trim().toLowerCase();
+      if (lower === "false" || lower === "0") return false;
+      if (lower === "true" || lower === "1") return true;
+    }
+    if (typeof val === "number") return val !== 0;
+    return Boolean(val);
+  };
+
+  const rawOnboarding =
+    raw.onboarding !== undefined
+      ? raw.onboarding
+      : raw.isOnboarded !== undefined
+      ? raw.isOnboarded
+      : raw.is_onboarded !== undefined
+      ? raw.is_onboarded
+      : raw.onboarded !== undefined
+      ? raw.onboarded
+      : raw.onboardingCompleted !== undefined
+      ? raw.onboardingCompleted
+      : raw.isCompletedOnboarding !== undefined
+      ? raw.isCompletedOnboarding
+      : undefined;
+
+  const onboarding = parseBool(rawOnboarding);
+  const isOnboarded = onboarding;
+
   const userData = {
     ...raw,
     name,
@@ -144,6 +174,8 @@ export function extractUserData(payload) {
     phoneNumber,
     phone: phoneNumber,
     currency,
+    onboarding,
+    isOnboarded,
     Email: email,
     Name: name,
     PhoneNumber: phoneNumber,
@@ -155,6 +187,8 @@ export function extractUserData(payload) {
       phoneNumber,
       phone: phoneNumber,
       currency,
+      onboarding,
+      isOnboarded,
       Email: email,
       Name: name,
     },
@@ -165,6 +199,8 @@ export function extractUserData(payload) {
       phoneNumber,
       phone: phoneNumber,
       currency,
+      onboarding,
+      isOnboarded,
       Email: email,
       Name: name,
     },

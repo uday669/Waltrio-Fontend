@@ -264,8 +264,8 @@ export default function Dashboard() {
     {
       title: "Total Balance",
       value: fmtCurrency(totalBalance),
-      change: fmtPct(income.change ?? 0),
-      isPositive: Number(income.change ?? 0) >= 0,
+      change: null,
+      isPositive: true,
       icon: <IoWalletOutline size={20} color="#4f46e5" />,
       iconBg: "#eef2ff",
       sub: "Available net balance",
@@ -528,18 +528,20 @@ export default function Dashboard() {
                 </div>
 
                 <div className="pt-2 border-top border-light-subtle d-flex align-items-center justify-content-between">
-                  <span
-                    className={`ms-trend-pill ${
-                      stat.isPositive ? "positive" : "negative"
-                    }`}
-                  >
-                    {stat.isPositive ? (
-                      <FiTrendingUp size={11} />
-                    ) : (
-                      <FiTrendingDown size={11} />
-                    )}
-                    {stat.change}
-                  </span>
+                  {stat.change && (
+                    <span
+                      className={`ms-trend-pill ${
+                        stat.isPositive ? "positive" : "negative"
+                      }`}
+                    >
+                      {stat.isPositive ? (
+                        <FiTrendingUp size={11} />
+                      ) : (
+                        <FiTrendingDown size={11} />
+                      )}
+                      {stat.change}
+                    </span>
+                  )}
                   <span className="ms-stat-sub-text">{stat.sub}</span>
                 </div>
               </Card.Body>

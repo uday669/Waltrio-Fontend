@@ -55,6 +55,17 @@ export function AuthProvider({ children }) {
   const name = user?.name || user?.Name || user?.fullName || user?.FullName || user?.Data?.name || user?.data?.name || "";
   const currency = user?.currency || user?.Currency || user?.Data?.currency || user?.data?.currency || "INR";
   const currencySymbol = getCurrencySymbol(currency);
+  const onboarding =
+    user?.onboarding !== undefined
+      ? user.onboarding
+      : user?.isOnboarded !== undefined
+      ? user.isOnboarded
+      : user?.Data?.onboarding !== undefined
+      ? user.Data.onboarding
+      : user?.data?.onboarding !== undefined
+      ? user.data.onboarding
+      : undefined;
+  const isOnboarded = onboarding;
 
   const logout = () => {
     clearToken();
@@ -80,12 +91,14 @@ export function AuthProvider({ children }) {
       token,
       isAuthenticated: Boolean(token),
       isLoading: isLoading && !cachedUser,
+      onboarding,
+      isOnboarded,
       isError,
       error,
       logout,
       refetchUser,
     }),
-    [user, email, name, currency, currencySymbol, token, isLoading, cachedUser, isError, error, queryClient, navigate]
+    [user, email, name, currency, currencySymbol, token, isLoading, cachedUser, onboarding, isOnboarded, isError, error, queryClient, navigate]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

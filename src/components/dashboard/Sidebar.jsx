@@ -11,6 +11,7 @@ import {
   FiX,
   FiLogOut,
   FiTrendingUp,
+  FiUsers,
 } from "react-icons/fi";
 import { IoWalletOutline } from "react-icons/io5";
 import { useAuth } from "../../context/AuthContext";
@@ -28,6 +29,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: "Income", icon: <FiArrowUpRight size={17} />, path: "/income" },
     { name: "Expenses", icon: <FiArrowDownLeft size={17} />, path: "/expenses" },
     { name: "Budgets", icon: <FiPieChart size={17} />, path: "/budgets" },
+    { name: "Group & Split", icon: <FiUsers size={17} />, path: "/groups" },
   ];
 
   const secondaryNavItems = [
