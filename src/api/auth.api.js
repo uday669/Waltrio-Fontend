@@ -100,4 +100,27 @@ export const deleteProfile = async () => {
   }
 };
 
+/**
+ * Send 6-digit verification OTP to registered email for account deletion.
+ * POST /v1/api/auth/delete-account/send-otp
+ */
+export const sendDeleteAccountOtp = () =>
+  api.post(ENDPOINTS.auth.deleteAccountSendOtp);
+
+/**
+ * Permanently delete user account and all associated data with OTP.
+ * DELETE /v1/api/auth/delete-account
+ * @param {{ otp: string }} payload
+ */
+export const deleteAccountWithOtp = ({ otp }) =>
+  api.delete(ENDPOINTS.auth.deleteAccount, { otp });
+
+/**
+ * Get account deletion status and deletion summary.
+ * GET /v1/api/auth/delete-account/status
+ */
+export const getDeleteAccountStatus = () =>
+  api.get(ENDPOINTS.auth.deleteAccountStatus);
+
+
 

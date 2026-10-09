@@ -13,6 +13,9 @@ import {
   getProfile,
   updateProfile,
   deleteProfile,
+  sendDeleteAccountOtp,
+  deleteAccountWithOtp,
+  getDeleteAccountStatus,
 } from "../api/auth.api";
 import { getToken, setToken } from "../api/client";
 
@@ -304,4 +307,44 @@ export const useDeleteProfile = ({ onSuccess, ...options } = {}) => {
     ...options,
   });
 };
+
+/**
+ * Send 6-digit verification OTP to user's email for deleting account.
+ * POST /v1/api/auth/delete-account/send-otp
+ */
+export const useSendDeleteAccountOtp = (options = {}) =>
+  useMutation({
+    mutationKey: ["auth", "delete-account", "send-otp"],
+    mutationFn: sendDeleteAccountOtp,
+    ...options,
+  });
+
+/**
+ * Permanently delete account with 6-digit OTP.
+ * DELETE /v1/api/auth/delete-account
+ */
+export const useDeleteAccount = ({ onSuccess, ...options } = {}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["auth", "delete-account"],
+    mutationFn: deleteAccountWithOtp,
+    onSuccess: (data, ...rest) => {
+      queryClient.clear();
+      onSuccess?.(data, ...rest);
+    },
+    ...options,
+  });
+};
+
+/**
+ * Query account deletion status and deletion breakdown summary.
+ * GET /v1/api/auth/delete-account/status
+ */
+export const useDeleteAccountStatus = (options = {}) =>
+  useQuery({
+    queryKey: ["auth", "delete-account", "status"],
+    queryFn: getDeleteAccountStatus,
+    ...options,
+  });
+
 

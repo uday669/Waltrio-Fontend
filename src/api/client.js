@@ -121,5 +121,16 @@ export const api = {
   post: (path, body, opts) => request(path, { ...opts, method: "POST", body }),
   put: (path, body, opts) => request(path, { ...opts, method: "PUT", body }),
   patch: (path, body, opts) => request(path, { ...opts, method: "PATCH", body }),
-  delete: (path, opts) => request(path, { ...opts, method: "DELETE" }),
+  delete: (path, bodyOrOpts, opts) => {
+    if (
+      bodyOrOpts &&
+      typeof bodyOrOpts === "object" &&
+      !("headers" in bodyOrOpts) &&
+      !("auth" in bodyOrOpts) &&
+      !("body" in bodyOrOpts)
+    ) {
+      return request(path, { ...opts, method: "DELETE", body: bodyOrOpts });
+    }
+    return request(path, { ...bodyOrOpts, method: "DELETE" });
+  },
 };

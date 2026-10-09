@@ -10,6 +10,9 @@ export const ENDPOINTS = {
     forgotPassword: "/auth/forgot-password",
     forgotPasswordVerifyOtp: "/auth/forgot-password/verify-otp",
     profile: "/auth/profile",
+    deleteAccountSendOtp: "/auth/delete-account/send-otp",
+    deleteAccount: "/auth/delete-account",
+    deleteAccountStatus: "/auth/delete-account/status",
   },
   profile: "/auth/profile",
 

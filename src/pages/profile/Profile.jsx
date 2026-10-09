@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -21,9 +21,18 @@ import {
   FiShield,
   FiKey,
   FiLayers,
+  FiAlertTriangle,
+  FiClock,
+  FiCheckCircle,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
-import { useProfile, useUpdateProfile, useDeleteProfile } from "../../hooks/useAuth";
+import {
+  useProfile,
+  useUpdateProfile,
+  useSendDeleteAccountOtp,
+  useDeleteAccount,
+} from "../../hooks/useAuth";
+import { getDeleteAccountStatus } from "../../api/auth.api";
 import { toast } from "../../lib/toast";
 import { CURRENCIES } from "../../utils/currency";
 
@@ -31,7 +40,8 @@ export default function Profile() {
   const { user, logout } = useAuth();
   const { data: profileData, isLoading: profileLoading } = useProfile();
   const { mutateAsync: updateProfileMut, isPending: isSaving } = useUpdateProfile();
-  const { mutateAsync: deleteProfileMut, isPending: isDeleting } = useDeleteProfile();
+  const { mutateAsync: sendDeleteOtpMut, isPending: isSendingOtp } = useSendDeleteAccountOtp();
+  const { mutateAsync: deleteAccountMut, isPending: isDeletingAccount } = useDeleteAccount();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -45,8 +55,16 @@ export default function Profile() {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencySearch, setCurrencySearch] = useState("");
 
-  // Modal Delete Account Confirmation State
+  // Modal Delete Account Confirmation & Multi-Step OTP State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState("CONFIRM"); // 'CONFIRM' | 'OTP' | 'PROCESSING' | 'COMPLETED'
+  const [deleteOtp, setDeleteOtp] = useState(["", "", "", "", "", ""]);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [deleteError, setDeleteError] = useState("");
+  const [pollingStatus, setPollingStatus] = useState("processing");
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
+  const otpRefs = useRef([]);
+  const pollingTimerRef = useRef(null);
 
   // Sync profile data when fetched
   useEffect(() => {
@@ -109,17 +127,217 @@ export default function Profile() {
     }
   };
 
-  // Handle Delete Account & Data
-  const handleDeleteAccount = async () => {
-    try {
-      await deleteProfileMut();
-      toast.success("Profile and all associated data permanently deleted.");
-      setShowDeleteModal(false);
-      logout();
-    } catch (err) {
-      console.error("[profile] delete error:", err);
-      toast.error(err.message || "Failed to delete profile. Please try again.");
+  // Handle Resend OTP Timer Countdown
+  useEffect(() => {
+    let interval = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
     }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resendTimer]);
+
+  // Handle Automatic Logout / Redirection Countdown on Completed Step
+  useEffect(() => {
+    let timer = null;
+    if (deleteStep === "COMPLETED") {
+      if (redirectCountdown > 0) {
+        timer = setTimeout(() => {
+          setRedirectCountdown((prev) => prev - 1);
+        }, 1000);
+      } else {
+        logout();
+      }
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [deleteStep, redirectCountdown, logout]);
+
+  // Cleanup polling timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
+    };
+  }, []);
+
+  // Open Delete Modal
+  const handleOpenDeleteModal = () => {
+    if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
+    setDeleteStep("CONFIRM");
+    setDeleteOtp(["", "", "", "", "", ""]);
+    setDeleteError("");
+    setPollingStatus("processing");
+    setResendTimer(0);
+    setRedirectCountdown(3);
+    setShowDeleteModal(true);
+  };
+
+  // Step 1 -> Step 2: Send OTP
+  const handleSendDeleteOtp = async () => {
+    try {
+      setDeleteError("");
+      const res = await sendDeleteOtpMut();
+      toast.success(
+        res?.message || "A 6-digit verification OTP has been sent to your registered email."
+      );
+      setDeleteStep("OTP");
+      setDeleteOtp(["", "", "", "", "", ""]);
+      setResendTimer(60);
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 150);
+    } catch (err) {
+      console.error("[delete-account] send otp error:", err);
+      const msg = err.message || "Failed to send verification code. Please try again.";
+      setDeleteError(msg);
+      toast.error(msg);
+    }
+  };
+
+  // Resend OTP
+  const handleResendDeleteOtp = async () => {
+    if (resendTimer > 0 || isSendingOtp) return;
+    try {
+      setDeleteError("");
+      const res = await sendDeleteOtpMut();
+      toast.success(
+        res?.message || "A fresh 6-digit verification OTP has been sent to your email."
+      );
+      setDeleteOtp(["", "", "", "", "", ""]);
+      setResendTimer(60);
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 150);
+    } catch (err) {
+      console.error("[delete-account] resend otp error:", err);
+      const msg = err.message || "Failed to resend verification code. Please try again.";
+      setDeleteError(msg);
+      toast.error(msg);
+    }
+  };
+
+  // OTP Input Handlers
+  const handleOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const nextOtp = [...deleteOtp];
+    nextOtp[index] = value.slice(-1);
+    setDeleteOtp(nextOtp);
+    if (deleteError) setDeleteError("");
+
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !deleteOtp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text/plain").trim();
+    if (!/^\d{6}$/.test(pastedData)) return;
+
+    const digits = pastedData.slice(0, 6).split("");
+    setDeleteOtp(digits);
+    if (deleteError) setDeleteError("");
+    otpRefs.current[5]?.focus();
+  };
+
+  // Poll /v1/api/auth/delete-account/status until completed
+  const checkDeletionStatus = async () => {
+    try {
+      const res = await getDeleteAccountStatus();
+      const status = (res?.data?.status || res?.status || "").toLowerCase();
+
+      // If status === "completed" ➔ clear token and redirect to Login screen!
+      if (status === "completed") {
+        setDeleteStep("COMPLETED");
+        setRedirectCountdown(3);
+        toast.success("Account deleted successfully.");
+        return;
+      }
+
+      // If status === "processing" ➔ wait 1 second and check again
+      if (status === "processing" || status === "pending" || !status) {
+        setPollingStatus(status || "processing");
+        pollingTimerRef.current = setTimeout(() => {
+          checkDeletionStatus();
+        }, 1000);
+        return;
+      }
+
+      if (status === "failed" || status === "error") {
+        const errorMsg = res?.data?.message || res?.message || "Account deletion could not be completed.";
+        setDeleteError(errorMsg);
+        setDeleteStep("OTP");
+        toast.error(errorMsg);
+        return;
+      }
+
+      // Fallback completed
+      setDeleteStep("COMPLETED");
+      setRedirectCountdown(3);
+    } catch (err) {
+      // If 401 or 404, user account and session have already been deleted
+      if (err.status === 401 || err.status === 404) {
+        setDeleteStep("COMPLETED");
+        setRedirectCountdown(3);
+        return;
+      }
+
+      // Otherwise wait 1 second and retry
+      pollingTimerRef.current = setTimeout(() => {
+        checkDeletionStatus();
+      }, 1000);
+    }
+  };
+
+  // Step 2 -> Confirm with OTP and start polling status
+  const handleConfirmDelete = async () => {
+    const fullOtp = deleteOtp.join("").trim();
+    if (fullOtp.length !== 6) {
+      setDeleteError("Please enter the complete 6-digit verification code.");
+      return;
+    }
+
+    try {
+      setDeleteError("");
+      const deleteRes = await deleteAccountMut({ otp: fullOtp });
+
+      const initialStatus = (deleteRes?.data?.status || deleteRes?.status || "").toLowerCase();
+      if (initialStatus === "completed") {
+        setDeleteStep("COMPLETED");
+        setRedirectCountdown(3);
+        toast.success("Account deleted successfully.");
+        return;
+      }
+
+      // Transition to PROCESSING and poll status every 1 second
+      setDeleteStep("PROCESSING");
+      setPollingStatus("processing");
+      pollingTimerRef.current = setTimeout(() => {
+        checkDeletionStatus();
+      }, 1000);
+    } catch (err) {
+      console.error("[delete-account] deletion error:", err);
+      const msg = err.message || "Invalid or expired verification code. Please try again.";
+      setDeleteError(msg);
+      toast.error(msg);
+    }
+  };
+
+  // Immediate logout from completed modal
+  const handleFinalLogout = () => {
+    setShowDeleteModal(false);
+    logout();
   };
 
   return (
@@ -310,7 +528,7 @@ export default function Profile() {
                 <Button
                   variant="outline-danger"
                   size="sm"
-                  onClick={() => setShowDeleteModal(true)}
+                  onClick={handleOpenDeleteModal}
                   className="w-100 rounded-8px d-flex align-items-center justify-content-center gap-1 fs-16px fw-700 py-4"
                   style={{ backgroundColor: "#ffffff" }}
                 >
@@ -711,51 +929,292 @@ export default function Profile() {
       </Modal>
 
       {/* ===================================================================
-          CONFIRM DELETE PROFILE & ACCOUNT MODAL
+          CONFIRM DELETE PROFILE & ACCOUNT MODAL (PERFECT MINIMAL SAAS DESIGN)
           =================================================================== */}
       <Modal
         show={showDeleteModal}
-        onHide={() => setShowDeleteModal(false)}
+        onHide={() => {
+          if (
+            deleteStep !== "COMPLETED" &&
+            deleteStep !== "PROCESSING" &&
+            !isDeletingAccount
+          ) {
+            if (pollingTimerRef.current) clearTimeout(pollingTimerRef.current);
+            setShowDeleteModal(false);
+          }
+        }}
         centered
         className="ur-modal"
-        dialogClassName="ur-delete-modal-dialog"
+        dialogClassName="ur-account-delete-dialog"
+        backdrop={
+          deleteStep === "COMPLETED" || deleteStep === "PROCESSING"
+            ? "static"
+            : true
+        }
+        keyboard={deleteStep !== "COMPLETED" && deleteStep !== "PROCESSING"}
       >
-        <Modal.Body className="text-center p-4">
-          <div className="ur-delete-icon-box mx-auto mb-3">
-            <FiTrash2 size={24} color="#ef4444" />
-          </div>
-          <h5 className="fw-700 text-dark mb-1.5" style={{ fontSize: "16px" }}>
-            Delete Profile &amp; All Data?
-          </h5>
-          <p
-            className="text-muted mb-4"
-            style={{ fontSize: "12.5px", lineHeight: "1.5" }}
-          >
-            Are you sure you want to delete your profile? All of your current financial data—including your income streams, expense logs, budget caps, categories, and account credentials—will be <strong>permanently wiped out</strong>. This action cannot be undone.
-          </p>
-          <div className="d-flex justify-content-center gap-2">
-            <Button
-              variant="light"
-              size="sm"
-              onClick={() => setShowDeleteModal(false)}
-              className="rounded-8px px-3 fw-600 border"
-              disabled={isDeleting}
-              style={{ fontSize: "13px" }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleDeleteAccount}
-              className="rounded-8px px-3 fw-600"
-              disabled={isDeleting}
-              style={{ fontSize: "13px" }}
-            >
-              {isDeleting ? "Deleting..." : "Yes, Delete Everything"}
-            </Button>
-          </div>
-        </Modal.Body>
+        <div className="p-4" style={{ backgroundColor: "#ffffff" }}>
+          {/* STEP 1: CONFIRMATION / PRE-WARNING */}
+          {deleteStep === "CONFIRM" && (
+            <div>
+              <div className="text-center mb-3">
+                <div className="ur-modal-avatar-badge danger">
+                  <FiTrash2 size={24} />
+                </div>
+                <h5 className="fw-700 text-dark mb-1.5" style={{ fontSize: "17.5px" }}>
+                  Delete Account?
+                </h5>
+                <p className="text-muted mb-0" style={{ fontSize: "12.5px", lineHeight: "1.55" }}>
+                  This will permanently delete your profile, credentials, and all recorded financial data. This action cannot be reversed.
+                </p>
+              </div>
+
+              {/* Registered Email Destination Row */}
+              <div className="p-2.5 rounded-12px bg-light border my-3 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2 overflow-hidden">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded-8px bg-white border flex-shrink-0"
+                    style={{ width: "28px", height: "28px" }}
+                  >
+                    <FiMail size={13} className="text-muted" />
+                  </div>
+                  <span className="text-truncate fs-12.5px fw-600 text-dark">
+                    {formData.email || user?.email || "your registered email"}
+                  </span>
+                </div>
+                <span className="badge bg-white text-secondary border fs-10.5px fw-600 px-2 py-1 rounded-6px flex-shrink-0">
+                  Registered
+                </span>
+              </div>
+
+              <p className="text-muted fs-11.5px text-center mb-3.5" style={{ lineHeight: "1.4" }}>
+                We will send a 6-digit verification code to confirm ownership.
+              </p>
+
+              {deleteError && (
+                <div className="alert alert-danger py-2 px-3 fs-12px mb-3 d-flex align-items-center gap-2 rounded-8px">
+                  <FiAlertTriangle size={14} className="flex-shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="d-flex gap-2 pt-1">
+                <Button
+                  variant="light"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="w-50 py-2 rounded-10px border fw-600 fs-13px text-secondary"
+                  disabled={isSendingOtp}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleSendDeleteOtp}
+                  className="w-50 py-2 rounded-10px fw-600 fs-13px d-flex align-items-center justify-content-center gap-1.5"
+                  disabled={isSendingOtp}
+                  style={{ backgroundColor: "#e11d48", borderColor: "#e11d48" }}
+                >
+                  {isSendingOtp ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                      <span>Sending Code...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiKey size={14} />
+                      <span>Send Code</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: OTP VERIFICATION */}
+          {deleteStep === "OTP" && (
+            <div>
+              <div className="text-center mb-3">
+                <div className="ur-modal-avatar-badge warning">
+                  <FiShield size={24} />
+                </div>
+                <h5 className="fw-700 text-dark mb-1" style={{ fontSize: "17.5px" }}>
+                  Enter Verification Code
+                </h5>
+                <p className="text-muted mb-0" style={{ fontSize: "12px", lineHeight: "1.5" }}>
+                  Please enter the 6-digit code sent to
+                </p>
+                <div className="fw-700 text-dark fs-12.5px text-truncate px-2 mt-0.5">
+                  {formData.email || user?.email}
+                </div>
+              </div>
+
+              {/* 6 Digit OTP Inputs */}
+              <div className="d-flex justify-content-center gap-2 my-3">
+                {deleteOtp.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => (otpRefs.current[idx] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    onPaste={idx === 0 ? handleOtpPaste : undefined}
+                    disabled={isDeletingAccount}
+                    autoFocus={idx === 0}
+                    style={{
+                      width: "42px",
+                      height: "50px",
+                      textAlign: "center",
+                      fontSize: "19px",
+                      fontWeight: 700,
+                      borderRadius: "10px",
+                      border: digit ? "2px solid #e11d48" : "1.5px solid #cbd5e1",
+                      backgroundColor: "#f8fafc",
+                      outline: "none",
+                      transition: "border-color 0.15s ease",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#e11d48";
+                      e.target.style.backgroundColor = "#ffffff";
+                    }}
+                    onBlur={(e) => {
+                      if (!digit) {
+                        e.target.style.borderColor = "#cbd5e1";
+                        e.target.style.backgroundColor = "#f8fafc";
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Resend Timer / Action */}
+              <div className="text-center mb-3 fs-12px">
+                {resendTimer > 0 ? (
+                  <span className="text-muted d-flex align-items-center justify-content-center gap-1">
+                    <FiClock size={13} />
+                    <span>Resend code in <strong>00:{resendTimer < 10 ? `0${resendTimer}` : resendTimer}</strong></span>
+                  </span>
+                ) : (
+                  <div className="text-muted">
+                    Didn't receive code?{" "}
+                    <button
+                      type="button"
+                      onClick={handleResendDeleteOtp}
+                      disabled={isSendingOtp}
+                      className="btn btn-link p-0 text-danger fw-700 fs-12px text-decoration-none"
+                    >
+                      {isSendingOtp ? "Sending..." : "Resend Code"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {deleteError && (
+                <div className="alert alert-danger py-2 px-3 fs-12px mb-3 d-flex align-items-center gap-2 rounded-8px">
+                  <FiAlertTriangle size={14} className="flex-shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="d-flex gap-2 pt-1">
+                <Button
+                  variant="light"
+                  onClick={() => {
+                    setDeleteStep("CONFIRM");
+                    setDeleteError("");
+                  }}
+                  className="w-50 py-2 rounded-10px border fw-600 fs-13px text-secondary"
+                  disabled={isDeletingAccount}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleConfirmDelete}
+                  className="w-50 py-2 rounded-10px fw-600 fs-13px d-flex align-items-center justify-content-center gap-1.5"
+                  disabled={deleteOtp.join("").length !== 6 || isDeletingAccount}
+                  style={{ backgroundColor: "#e11d48", borderColor: "#e11d48" }}
+                >
+                  {isDeletingAccount ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiTrash2 size={14} />
+                      <span>Delete Account</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2.5: PROCESSING STATUS CHECK (POLLING EVERY 1 SECOND) */}
+          {deleteStep === "PROCESSING" && (
+            <div className="text-center py-3">
+              <div
+                className="ur-modal-avatar-badge warning mb-3"
+                style={{ width: "56px", height: "56px" }}
+              >
+                <span
+                  className="spinner-border text-danger"
+                  style={{ width: "24px", height: "24px", borderWidth: "3px" }}
+                  role="status"
+                />
+              </div>
+              <h5 className="fw-700 text-dark mb-1.5" style={{ fontSize: "17.5px" }}>
+                Deleting Account...
+              </h5>
+              <p className="text-muted mb-3" style={{ fontSize: "12.5px", lineHeight: "1.55" }}>
+                Please wait while your financial data and account are being permanently wiped.
+              </p>
+              <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill bg-light border text-muted fs-11.5px">
+                <span
+                  className="ur-live-dot"
+                  style={{
+                    backgroundColor: "#e11d48",
+                    boxShadow: "0 0 0 3px rgba(225, 29, 72, 0.2)",
+                  }}
+                />
+                <span>
+                  Status: <strong className="text-dark text-capitalize">{pollingStatus}</strong> (checking every 1s)...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: DELETION COMPLETED (CLEAN SAAS FINISH - NO DELETION SUMMARY) */}
+          {deleteStep === "COMPLETED" && (
+            <div className="text-center py-2">
+              <div className="ur-modal-avatar-badge success">
+                <FiCheckCircle size={28} />
+              </div>
+              <h5 className="fw-700 text-dark mb-1" style={{ fontSize: "18px" }}>
+                Account Deleted Successfully
+              </h5>
+              <p className="text-muted mb-3" style={{ fontSize: "12.5px", lineHeight: "1.5" }}>
+                Your account and all associated data have been permanently removed.
+              </p>
+
+              <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill bg-light border text-muted fs-11.5px mb-3.5">
+                <span className="spinner-border spinner-border-sm text-primary" style={{ width: "12px", height: "12px" }} />
+                <span>Redirecting to login in <strong>{redirectCountdown}s</strong>...</span>
+              </div>
+
+              <Button
+                variant="primary"
+                onClick={handleFinalLogout}
+                className="w-100 py-2.5 rounded-10px fw-700 fs-13px"
+              >
+                Return to Login Now
+              </Button>
+            </div>
+          )}
+        </div>
       </Modal>
     </Container>
   );
